@@ -1,0 +1,12 @@
+# Python byte-code cache
+__pycache__/
+*.py[cod]
+
+# Runtime output files (generated when the bot runs)
+trading_bot.log
+trades_log.csv
+
+# Virtual environments
+.venv/
+venv/
+env/
