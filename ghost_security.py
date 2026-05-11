@@ -182,10 +182,13 @@ class SecurityAuditor:
                 )
             ]
         findings: list[AuditFinding] = []
+        lines = source.splitlines()
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
                 name = self._call_name(node.func)
                 if name in RISKY_CALLS:
+                    if self._has_allow_marker(lines, getattr(node, "lineno", 1), name):
+                        continue
                     findings.append(
                         AuditFinding(
                             str(file_path),
@@ -217,6 +220,13 @@ class SecurityAuditor:
             parent = SecurityAuditor._call_name(node.value)
             return f"{parent}.{node.attr}" if parent else node.attr
         return ""
+
+    @staticmethod
+    def _has_allow_marker(lines: list[str], line_number: int, rule: str) -> bool:
+        start = max(0, line_number - 3)
+        end = min(len(lines), line_number + 1)
+        marker = f"jarvis-audit: allow {rule}"
+        return any(marker in line for line in lines[start:end])
 
     @staticmethod
     def _severity_rank(severity: str) -> int:

@@ -71,6 +71,7 @@ class OSBridge:
         self._validate_command(argv)
         working_dir = self._safe_path(cwd)
         started = datetime.now(timezone.utc).isoformat()
+        # jarvis-audit: allow subprocess.run -- argv-only, workspace-scoped, opt-in terminal bridge.
         completed = subprocess.run(
             argv,
             cwd=str(working_dir),

@@ -119,7 +119,9 @@ class JarvisBrain:
             findings = self.auditor.scan()
             self.voice.speak(f"security audit complete with {len(findings)} findings")
             return {"findings": findings}
-        if normalized.startswith(("build ", "create ", "jarvis, baue", "jarvis baue", "erweitere dich")):
+        if normalized.startswith(
+            ("build ", "create ", "erstelle ", "baue ", "jarvis, baue", "jarvis baue", "erweitere dich")
+        ):
             result = self.architect.compile_request(command)
             self.voice.speak(f"project generated at {result.root}")
             return {"build": result}

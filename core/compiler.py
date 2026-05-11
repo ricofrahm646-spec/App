@@ -22,10 +22,33 @@ from ghost_security import AuditFinding, SecurityAuditor
 ProjectKind = Literal["trading_bot", "web_app", "defensive_security", "script", "documentation"]
 
 SAFE_NAME = re.compile(r"[^a-zA-Z0-9_-]+")
-TRADING_TERMS = {"trading", "trade", "bot", "scalp", "mt5", "metatrader", "smc", "forex", "crypto"}
-WEB_TERMS = {"streamlit", "dashboard", "web", "app", "ui", "frontend", "website"}
-SECURITY_TERMS = {"security", "audit", "scanner", "hacking", "pentest", "vulnerability", "forensic"}
-DOC_TERMS = {"documentation", "readme", "manual", "docs", "guide", "strategy"}
+TRADING_TERMS = {
+    "trading",
+    "trade",
+    "handel",
+    "boerse",
+    "börse",
+    "bot",
+    "scalp",
+    "scalper",
+    "mt5",
+    "metatrader",
+    "smc",
+    "forex",
+    "crypto",
+}
+WEB_TERMS = {"streamlit", "dashboard", "web", "app", "ui", "frontend", "website", "oberflaeche", "oberfläche"}
+SECURITY_TERMS = {
+    "security",
+    "sicherheit",
+    "audit",
+    "scanner",
+    "hacking",
+    "pentest",
+    "vulnerability",
+    "forensic",
+}
+DOC_TERMS = {"documentation", "dokumentation", "readme", "manual", "docs", "guide", "leitfaden", "strategy", "strategie"}
 
 
 @dataclass(frozen=True)
