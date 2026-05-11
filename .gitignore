@@ -1,0 +1,16 @@
+# J.A.R.V.I.S. V300
+.env
+__pycache__/
+*.pyc
+*.pyo
+logs/*.log
+logs/*.csv
+logs/*.json
+logs/*.jsonl
+apps/*.py
+!apps/.gitkeep
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
