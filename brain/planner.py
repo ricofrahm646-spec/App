@@ -29,8 +29,8 @@ class Planner:
 
     def __init__(self) -> None:
         self._routing_rules: list[tuple[str, tuple[str, ...]]] = [
-            ("ResearchAgent", ("research", "find", "discover", "lookup", "compare")),
             ("WebResearchAgent", ("web", "internet", "headline", "news", "search")),
+            ("ResearchAgent", ("research", "find", "discover", "lookup", "compare")),
             ("CodingAgent", ("code", "implement", "build", "bug", "refactor")),
             ("AnalysisAgent", ("analyze", "analysis", "evaluate", "assess", "explain")),
             ("TaskPlannerAgent", ("plan", "subtask", "break down", "roadmap", "milestone")),
