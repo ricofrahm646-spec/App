@@ -1,0 +1,5 @@
+MetaTrader5
+playwright
+pyautogui
+streamlit
+

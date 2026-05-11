@@ -1,0 +1,2 @@
+"""Security-focused agent namespace."""
+

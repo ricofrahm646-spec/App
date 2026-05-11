@@ -30,8 +30,21 @@ class Planner:
     def __init__(self) -> None:
         self._routing_rules: list[tuple[str, tuple[str, ...]]] = [
             ("ResearchAgent", ("research", "find", "discover", "lookup", "compare")),
+            ("WebResearchAgent", ("web", "internet", "headline", "news", "search")),
             ("CodingAgent", ("code", "implement", "build", "bug", "refactor")),
             ("AnalysisAgent", ("analyze", "analysis", "evaluate", "assess", "explain")),
+            ("TaskPlannerAgent", ("plan", "subtask", "break down", "roadmap", "milestone")),
+            ("MemoryAgent", ("remember", "recall", "context", "history", "memory")),
+            ("GoldScalperProAgent", ("gold", "xauusd", "smc", "ict", "scalp")),
+            ("LiquiditySweeperAgent", ("stop hunt", "liquidity sweep", "wick")),
+            ("NewsReactorAgent", ("market news", "forex factory", "twitter", "sentiment")),
+            ("OrderflowMasterAgent", ("orderflow", "volume imbalance")),
+            ("ArbitrageBotAgent", ("arbitrage", "spread divergence")),
+            ("RiskCommanderAgent", ("aggressive growth", "risk commander", "position sizing")),
+            ("SessionSniperAgent", ("london session", "new york open", "session breakout")),
+            ("VolatilityGuardianAgent", ("atr", "volatility", "risk-off")),
+            ("TrendPulseAIAgent", ("trend continuation", "momentum trade")),
+            ("PortfolioAllocatorAgent", ("portfolio allocation", "rebalance", "multi symbol")),
         ]
 
     async def decide(self, task: str, agents: Iterable[AgentDescriptor]) -> PlanDecision:
