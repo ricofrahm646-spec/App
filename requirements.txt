@@ -1,0 +1,40 @@
+# JARVIS V300 OMNIPOTENCE - Python dependencies
+# ---------------------------------------------------------------------------
+# Core
+numpy>=1.26
+pandas>=2.2
+python-dateutil>=2.9
+
+# Trading
+MetaTrader5>=5.0.45 ; sys_platform == "win32"
+
+# Dashboard
+streamlit>=1.35
+altair>=5.3
+plotly>=5.22
+
+# Vision / OS control
+opencv-python>=4.9
+mss>=9.0
+pyautogui>=0.9.54
+pillow>=10.3
+
+# Ghost engine
+playwright>=1.44
+playwright-stealth>=1.0.6
+beautifulsoup4>=4.12
+lxml>=5.2
+requests>=2.32
+
+# Voice
+pyttsx3>=2.90
+SpeechRecognition>=3.10
+PyAudio>=0.2.14 ; sys_platform == "win32"
+
+# Code-Forge optional extras (used by generated scaffolds)
+fastapi>=0.110
+uvicorn>=0.30
+pydantic>=2.7
+
+# Quality
+black>=24.4
