@@ -1,0 +1,13 @@
+MetaTrader5
+streamlit
+pandas
+numpy
+plotly
+opencv-python
+mss
+pyautogui
+playwright
+SpeechRecognition
+pocketsphinx
+pyttsx3
+pyaudio
