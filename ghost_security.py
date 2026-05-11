@@ -207,7 +207,6 @@ class SecurityAuditor:
                                 "File write detected; verify path is controlled",
                             )
                         )
-                    )
         return findings
 
     @staticmethod
