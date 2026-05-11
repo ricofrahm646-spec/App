@@ -30,10 +30,13 @@ from agents.trading import (
     VolatilityGuardianAgent,
 )
 from agents.trading.mt5_gateway import MT5Gateway
+from agents.security import PentestAgent
+from agents.system import GhostBrowserAgent, StealthControllerAgent, VisionOverlordAgent
 from controller import AppControlInterface
 from core.orchestrator import Orchestrator, OrchestratorResponse
 from core.safety import KillSwitch
 from tools.search_tool import SearchTool
+from web_engine import WebEngine
 
 
 def configure_logging(verbose: bool) -> None:
@@ -49,7 +52,9 @@ async def build_orchestrator() -> Orchestrator:
     await orchestrator.setup()
     kill_switch = KillSwitch()
     search_tool = SearchTool(workspace_root=os.getcwd())
+    web_engine = WebEngine(workspace_root=os.getcwd())
     gateway = MT5Gateway(allow_live_orders=False, kill_switch=kill_switch)
+    app_controller = AppControlInterface(kill_switch=kill_switch)
 
     await orchestrator.register_agents(
         [
@@ -78,9 +83,21 @@ async def build_orchestrator() -> Orchestrator:
             VolatilityGuardianAgent(orchestrator.event_bus, orchestrator.memory, gateway),
             TrendPulseAIAgent(orchestrator.event_bus, orchestrator.memory, gateway),
             PortfolioAllocatorAgent(orchestrator.event_bus, orchestrator.memory, gateway),
+            VisionOverlordAgent(orchestrator.event_bus, orchestrator.memory),
+            StealthControllerAgent(
+                orchestrator.event_bus,
+                orchestrator.memory,
+                controller=app_controller,
+            ),
+            GhostBrowserAgent(
+                orchestrator.event_bus,
+                orchestrator.memory,
+                web_engine=web_engine,
+            ),
+            PentestAgent(orchestrator.event_bus, orchestrator.memory),
         ]
     )
-    orchestrator.app_controller = AppControlInterface(kill_switch=kill_switch)  # type: ignore[attr-defined]
+    orchestrator.app_controller = app_controller  # type: ignore[attr-defined]
     return orchestrator
 
 

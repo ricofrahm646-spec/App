@@ -45,6 +45,10 @@ class Planner:
             ("VolatilityGuardianAgent", ("atr", "volatility", "risk-off")),
             ("TrendPulseAIAgent", ("trend continuation", "momentum trade")),
             ("PortfolioAllocatorAgent", ("portfolio allocation", "rebalance", "multi symbol")),
+            ("VisionOverlordAgent", ("vision", "screen scan", "chart scan", "apex screen")),
+            ("StealthControllerAgent", ("control app", "open app", "steuern", "vordergrund", "mouse move")),
+            ("GhostBrowserAgent", ("ghost browser", "background scan", "market headlines", "web intelligence")),
+            ("PentestAgent", ("security audit", "pentest", "vulnerability scan", "hardening")),
         ]
 
     async def decide(self, task: str, agents: Iterable[AgentDescriptor]) -> PlanDecision:
