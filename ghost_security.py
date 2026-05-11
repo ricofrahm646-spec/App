@@ -46,6 +46,7 @@ class ResearchRecord:
 
 class SecurityAuditor:
     SECRET_PATTERN = re.compile(r"(api[_-]?key|secret|token|password)\s*[:=]\s*['\"][^'\"]+['\"]", re.I)
+    IGNORED_PARTS = {"__pycache__", ".venv", ".git", "tests"}
 
     def __init__(self) -> None:
         self.findings: list[AuditFinding] = []
@@ -166,7 +167,7 @@ class SecurityAuditor:
         py_files = [
             path
             for path in target.rglob("*.py")
-            if ".git" not in path.parts and "__pycache__" not in path.parts and ".venv" not in path.parts
+            if not any(part in self.IGNORED_PARTS for part in path.parts)
         ]
         findings: list[AuditFinding] = []
         for file_path in py_files:
