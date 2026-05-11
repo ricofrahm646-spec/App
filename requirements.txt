@@ -1,0 +1,32 @@
+# J.A.R.V.I.S. V300 - Dependencies
+# Core
+numpy
+pandas
+
+# Dashboard
+streamlit
+plotly
+
+# Trading (Windows only - install separately if on Windows)
+# MetaTrader5
+
+# Chart Analysis
+opencv-python
+mss
+
+# Web Scraping & News
+requests
+aiohttp
+beautifulsoup4
+playwright
+
+# Voice (optional - requires audio hardware)
+pyttsx3
+SpeechRecognition
+
+# Code Generation Templates
+flask
+flask-cors
+
+# Utilities
+pyautogui
