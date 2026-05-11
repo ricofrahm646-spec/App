@@ -1,0 +1,224 @@
+"""JARVIS V300 master brain orchestration."""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import logging
+import queue
+import threading
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Callable
+
+from coder import AppSpec, JarvisCoder
+from controller import OSController, ScreenAnalyzer
+from ghost_security import CodeAuditScanner, MarketResearchBrowser
+from trader_ultimate import TraderUltimate, demo_rates
+
+try:
+    import pyttsx3
+except Exception:  # pragma: no cover - optional local audio
+    pyttsx3 = None  # type: ignore[assignment]
+
+try:
+    import speech_recognition as sr
+except Exception:  # pragma: no cover - optional local audio
+    sr = None  # type: ignore[assignment]
+
+
+LOGGER = logging.getLogger("jarvis.master")
+
+
+@dataclass(frozen=True)
+class CommandResult:
+    command: str
+    status: str
+    message: str
+    payload: dict[str, object]
+    timestamp: str
+
+
+class VoiceIO:
+    def __init__(self, enabled: bool = False) -> None:
+        self.enabled = enabled
+        self._speaker = None
+        if enabled and pyttsx3 is not None:
+            self._speaker = pyttsx3.init()
+            self._speaker.setProperty("rate", 172)
+
+    def speak(self, message: str) -> None:
+        text = f"{message}, Sir."
+        if self.enabled and self._speaker is not None:
+            self._speaker.say(text)
+            self._speaker.runAndWait()
+        else:
+            print(text)
+
+    def listen_once(self, timeout: float = 5.0) -> str:
+        if not self.enabled or sr is None:
+            raise RuntimeError("Voice input requires SpeechRecognition, microphone access, and --voice.")
+        recognizer = sr.Recognizer()
+        with sr.Microphone() as source:
+            recognizer.adjust_for_ambient_noise(source, duration=0.4)
+            audio = recognizer.listen(source, timeout=timeout)
+        return recognizer.recognize_google(audio)
+
+
+class JarvisBrain:
+    def __init__(self, voice_enabled: bool = False) -> None:
+        self.voice = VoiceIO(voice_enabled)
+        self.trader = TraderUltimate()
+        self.coder = JarvisCoder()
+        self.screen = ScreenAnalyzer()
+        self.controller = OSController()
+        self.audit = CodeAuditScanner(Path("."))
+        self.commands: dict[str, Callable[[str], CommandResult]] = {
+            "status": self.status,
+            "trade": self.trade_scan,
+            "audit": self.security_audit,
+            "vision": self.vision_scan,
+            "code": self.generate_app,
+            "research": self.research,
+        }
+
+    def dispatch(self, raw_command: str) -> CommandResult:
+        normalized = raw_command.strip()
+        if not normalized:
+            return self._result(raw_command, "ignored", "No command received", {})
+        key, _, rest = normalized.partition(" ")
+        handler = self.commands.get(key.lower())
+        if handler is None:
+            return self._result(raw_command, "unknown", f"Unknown command: {key}", {"available": list(self.commands)})
+        try:
+            result = handler(rest.strip())
+            self.voice.speak(result.message)
+            return result
+        except Exception as exc:
+            LOGGER.exception("Command failed: %s", raw_command)
+            result = self._result(raw_command, "error", str(exc), {})
+            self.voice.speak(f"Command failed: {exc}")
+            return result
+
+    def status(self, _: str = "") -> CommandResult:
+        payload = {
+            "core": "online",
+            "trading_mode": "paper" if self.trader.config.paper_trading else "live-gated",
+            "os_control": self.controller.safe_to_control(),
+            "apps_dir": str(self.coder.apps_dir),
+        }
+        return self._result("status", "ok", "All monitored systems are online", payload)
+
+    def trade_scan(self, _: str = "") -> CommandResult:
+        signal = self.trader.generate_signal(demo_rates())
+        return self._result("trade", "ok", "Trading scan complete", {"signal": asdict(signal)})
+
+    def security_audit(self, _: str = "") -> CommandResult:
+        findings = self.audit.scan()
+        status = "warning" if findings else "ok"
+        return self._result(
+            "audit",
+            status,
+            f"Security audit complete with {len(findings)} finding(s)",
+            {"findings": [asdict(item) for item in findings]},
+        )
+
+    def vision_scan(self, _: str = "") -> CommandResult:
+        try:
+            analysis = self.screen.analyze_screen()
+        except Exception as exc:
+            analysis = {"status": "unavailable", "reason": str(exc)}
+        return self._result("vision", "ok", "Vision scan complete", {"analysis": analysis})
+
+    def generate_app(self, args: str) -> CommandResult:
+        name = args or "Jarvis Generated App"
+        spec = AppSpec(
+            name=name,
+            description=f"Generated by JARVIS for {name}.",
+            kind="cli",
+            features=("health status", "structured JSON output", "local-only execution"),
+        )
+        manifest = self.coder.generate(spec)
+        return self._result(
+            "code",
+            "ok",
+            f"Generated app {spec.name}",
+            {
+                "path": manifest.path,
+                "files": list(manifest.files),
+                "audit_findings": [asdict(item) for item in manifest.audit_findings],
+            },
+        )
+
+    def research(self, args: str) -> CommandResult:
+        urls = [item for item in args.split() if item.startswith(("http://", "https://"))]
+        if not urls:
+            return self._result("research", "ignored", "Provide one or more public URLs", {})
+        browser = MarketResearchBrowser()
+        results = asyncio.run(browser.fetch_many(urls))
+        return self._result(
+            "research",
+            "ok",
+            f"Fetched {len(results)} research document(s)",
+            {"results": [asdict(item) for item in results]},
+        )
+
+    def voice_loop(self) -> None:
+        self.voice.speak("Voice interface online")
+        while True:
+            command = self.voice.listen_once()
+            print(json.dumps(asdict(self.dispatch(command)), indent=2))
+
+    def queued_loop(self, commands: "queue.Queue[str]") -> None:
+        while True:
+            command = commands.get()
+            print(json.dumps(asdict(self.dispatch(command)), indent=2))
+
+    @staticmethod
+    def _result(command: str, status: str, message: str, payload: dict[str, object]) -> CommandResult:
+        return CommandResult(
+            command=command,
+            status=status,
+            message=message,
+            payload=payload,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
+
+def start_background_console(brain: JarvisBrain) -> threading.Thread:
+    commands: "queue.Queue[str]" = queue.Queue()
+    thread = threading.Thread(target=brain.queued_loop, args=(commands,), daemon=True)
+    thread.start()
+    print("Type JARVIS commands: status, trade, audit, vision, code <name>, research <url>")
+    while True:
+        try:
+            commands.put(input("JARVIS> "))
+        except EOFError:
+            break
+    return thread
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="JARVIS V300 master brain")
+    parser.add_argument("command", nargs="*", help="Command to execute once")
+    parser.add_argument("--voice", action="store_true", help="Enable local speech IO")
+    parser.add_argument("--interactive", action="store_true", help="Start console command loop")
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s - %(message)s")
+    brain = JarvisBrain(voice_enabled=args.voice)
+    if args.voice and not args.command and not args.interactive:
+        brain.voice_loop()
+        return 0
+    if args.interactive:
+        start_background_console(brain)
+        return 0
+    command = " ".join(args.command) if args.command else "status"
+    print(json.dumps(asdict(brain.dispatch(command)), indent=2, default=str))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

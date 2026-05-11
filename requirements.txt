@@ -1,0 +1,17 @@
+MetaTrader5
+streamlit
+plotly
+pandas
+numpy
+opencv-python
+mss
+pyautogui
+pygetwindow
+psutil
+playwright
+beautifulsoup4
+SpeechRecognition
+pyttsx3
+PyAudio
+fastapi
+uvicorn
