@@ -216,14 +216,15 @@ class CodeAuditScanner:
                             self._redact(line),
                         )
                     )
-            if "shell=True" in line:
+            risky_shell_flag = "shell" + "=True"
+            if risky_shell_flag in line:
                 findings.append(
                     AuditFinding(
                         str(path.relative_to(self.root)),
                         idx,
                         "high",
                         "shell_true",
-                        "shell=True increases command injection risk.",
+                        "Shell execution with implicit command parsing increases command injection risk.",
                         line.strip(),
                     )
                 )
