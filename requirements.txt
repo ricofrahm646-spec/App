@@ -11,3 +11,5 @@ SpeechRecognition
 pocketsphinx
 pyttsx3
 pyaudio
+pypdf
+pillow

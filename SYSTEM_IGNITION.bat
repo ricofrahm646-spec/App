@@ -26,7 +26,7 @@ set JARVIS_OS_CONTROL=0
 echo [JARVIS] Running initial code audit.
 python ghost_security.py
 
-echo [JARVIS] Launching War Room dashboard.
-streamlit run ui.py
+echo [JARVIS] Launching Universal Creator shell.
+streamlit run ui/main_shell.py
 
 endlocal

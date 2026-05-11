@@ -2,7 +2,7 @@
 JARVIS V300 War Room dashboard.
 
 Run with:
-    streamlit run ui.py
+    streamlit run ui/war_room.py
 """
 
 from __future__ import annotations
@@ -17,9 +17,6 @@ import streamlit as st
 
 from ghost_security import SecurityAuditor
 from trader_ultimate import SMCSignal, TradingUltima
-
-
-st.set_page_config(page_title="JARVIS V300 OMNIPOTENCE", page_icon="J", layout="wide")
 
 
 WAR_ROOM_CSS = """
@@ -42,13 +39,6 @@ body, .stApp {
 .jarvis-subtitle {
     color: #7dd3fc;
     margin-top: -1rem;
-}
-.status-card {
-    border: 1px solid #0ea5ff70;
-    background: linear-gradient(145deg, #06111fdd, #02050bdd);
-    border-radius: 16px;
-    padding: 1rem;
-    box-shadow: 0 0 24px #0369a155 inset, 0 0 18px #0ea5ff22;
 }
 .log-line {
     font-family: Consolas, monospace;
@@ -153,39 +143,23 @@ def render_header() -> None:
     )
 
 
-def render_sidebar() -> dict[str, Any]:
+def render_dashboard() -> None:
+    st.set_page_config(page_title="JARVIS V300 OMNIPOTENCE", page_icon="J", layout="wide")
+    ensure_state()
+    render_header()
     with st.sidebar:
         st.header("Mission Control")
-        symbol = st.text_input("Symbol", value="EURUSD")
+        st.text_input("Symbol", value="EURUSD")
         auto_refresh = st.toggle("Auto-refresh UI", value=False)
-        st.caption("Live trading remains dry-run unless JARVIS_LIVE_TRADING=1 is set in the environment.")
+        st.caption("Live trading remains dry-run unless JARVIS_LIVE_TRADING=1 is set.")
         run_tick = st.button("Execute Trading Scan", type="primary")
         run_audit = st.button("Run Security Audit")
         st.divider()
         st.caption("Operator: Sir")
-        return {"symbol": symbol, "auto_refresh": auto_refresh, "run_tick": run_tick, "run_audit": run_audit}
 
-
-def render_metrics(snapshot: dict[str, Any], findings_count: int) -> None:
-    cols = st.columns(4)
-    status = snapshot.get("status", "standby")
-    signal = snapshot.get("signal")
-    confluence = f"{signal.confluence:.2%}" if isinstance(signal, SMCSignal) else "0.00%"
-    mode = snapshot.get("order", {}).get("mode", "dry_run") if isinstance(snapshot.get("order"), dict) else "dry_run"
-    cols[0].metric("System Status", status.upper())
-    cols[1].metric("Signal Confluence", confluence)
-    cols[2].metric("Execution Mode", str(mode).upper())
-    cols[3].metric("Audit Findings", findings_count)
-
-
-def render_dashboard() -> None:
-    ensure_state()
-    render_header()
-    controls = render_sidebar()
     engine = trading_engine()
-
     findings_count = 0
-    if controls["run_tick"]:
+    if run_tick:
         snapshot = engine.tick()
         st.session_state.last_snapshot = snapshot
         append_log(f"Trading scan: {snapshot.get('status')} - {snapshot.get('reason', 'signal processed')}")
@@ -195,7 +169,7 @@ def render_dashboard() -> None:
         equity.loc[len(equity)] = [datetime.now(timezone.utc), round(max(0.0, last_equity + delta), 2)]
         st.session_state.equity = equity.tail(160)
 
-    if controls["run_audit"]:
+    if run_audit:
         findings = SecurityAuditor(["apps", "."]).scan()
         findings_count = len(findings)
         append_log(f"Security audit completed with {findings_count} findings")
@@ -203,15 +177,19 @@ def render_dashboard() -> None:
             st.dataframe(pd.DataFrame([finding.__dict__ for finding in findings]) if findings else pd.DataFrame())
 
     snapshot = st.session_state.last_snapshot
-    render_metrics(snapshot, findings_count)
+    cols = st.columns(4)
+    signal = snapshot.get("signal") if snapshot else None
+    cols[0].metric("System Status", snapshot.get("status", "standby").upper() if snapshot else "STANDBY")
+    cols[1].metric("Signal Confluence", f"{signal.confluence:.2%}" if isinstance(signal, SMCSignal) else "0.00%")
+    cols[2].metric("Execution Mode", "DRY_RUN")
+    cols[3].metric("Audit Findings", findings_count)
 
     left, right = st.columns([2, 1])
     with left:
         st.subheader("Equity Live Graph")
         st.plotly_chart(equity_chart(st.session_state.equity), use_container_width=True)
         st.subheader("Agent Trading Signals")
-        st.dataframe(signal_to_table(snapshot.get("signal") if snapshot else None), use_container_width=True)
-
+        st.dataframe(signal_to_table(signal if isinstance(signal, SMCSignal) else None), use_container_width=True)
     with right:
         st.subheader("Status Logs")
         for line in st.session_state.logs[:18]:
@@ -219,7 +197,7 @@ def render_dashboard() -> None:
         if not st.session_state.logs:
             st.info("Awaiting operator command, Sir.")
 
-    if controls["auto_refresh"]:
+    if auto_refresh:
         st.rerun()
 
 

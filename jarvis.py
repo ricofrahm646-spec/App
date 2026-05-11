@@ -17,7 +17,10 @@ from pathlib import Path
 from typing import Any
 
 from coder import AppSpec, JarvisCoder
+from core.compiler import ArchitectCompiler
+from core.processor import MultiFormatProcessor
 from ghost_security import GhostResearch, SecurityAuditor
+from trader.scalper import AggressiveScalingScalper
 from trader_ultimate import TradingUltima
 
 try:
@@ -41,6 +44,8 @@ def to_jsonable(value: Any) -> Any:
         return {str(key): to_jsonable(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [to_jsonable(item) for item in value]
+    if isinstance(value, Path):
+        return str(value)
     if hasattr(value, "isoformat"):
         return value.isoformat()
     return value
@@ -76,7 +81,10 @@ class JarvisBrain:
     def __init__(self, voice: VoiceIO | None = None) -> None:
         self.voice = voice or VoiceIO(enabled=False)
         self.trader = TradingUltima()
+        self.scalper = AggressiveScalingScalper()
         self.coder = JarvisCoder()
+        self.architect = ArchitectCompiler()
+        self.processor = MultiFormatProcessor()
         self.auditor = SecurityAuditor(["apps", "."])
         self.research = GhostResearch()
 
@@ -87,6 +95,7 @@ class JarvisBrain:
             "trading": snapshot,
             "security_findings": [finding for finding in findings[:25]],
             "apps_path": str(Path("apps").resolve()),
+            "creator_projects_path": str(Path("generated_projects").resolve()),
         }
 
     def handle_command(self, command: str) -> dict[str, Any]:
@@ -102,10 +111,23 @@ class JarvisBrain:
                 self.trader.stop()
             self.voice.speak(f"trading scan complete with status {result.get('status')}")
             return result
+        if normalized in {"scalper", "scalper scan", "aggressive scaling", "scalp"}:
+            result = self.scalper.scan_once()
+            self.voice.speak(f"scalper scan complete with status {result.get('status')}")
+            return result
         if normalized in {"audit", "security audit", "scan code"}:
             findings = self.auditor.scan()
             self.voice.speak(f"security audit complete with {len(findings)} findings")
             return {"findings": findings}
+        if normalized.startswith(("build ", "create ", "jarvis, baue", "jarvis baue", "erweitere dich")):
+            result = self.architect.compile_request(command)
+            self.voice.speak(f"project generated at {result.root}")
+            return {"build": result}
+        if normalized.startswith("process "):
+            path = command.split(" ", 1)[1].strip()
+            result = self.processor.process(path)
+            self.voice.speak(f"processed {path}")
+            return {"processed": result}
         if normalized.startswith("generate app"):
             name = normalized.replace("generate app", "", 1).strip() or "jarvis_generated_app"
             generated = self.coder.generate(
@@ -137,7 +159,7 @@ class JarvisBrain:
         import streamlit.web.bootstrap as bootstrap  # type: ignore
 
         def _run() -> None:
-            bootstrap.run("ui.py", "", [], {"server.port": port})
+            bootstrap.run("ui/main_shell.py", "", [], {"server.port": port})
 
         thread = threading.Thread(target=_run, daemon=False)
         thread.start()
