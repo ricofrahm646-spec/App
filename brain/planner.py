@@ -29,6 +29,7 @@ class Planner:
 
     def __init__(self) -> None:
         self._routing_rules: list[tuple[str, tuple[str, ...]]] = [
+            ("GhostBrowserAgent", ("ghost browser", "background scan", "market headlines", "web intelligence")),
             ("WebResearchAgent", ("web", "internet", "headline", "news", "search")),
             ("ResearchAgent", ("research", "find", "discover", "lookup", "compare")),
             ("CodingAgent", ("code", "implement", "build", "bug", "refactor")),
@@ -47,7 +48,6 @@ class Planner:
             ("PortfolioAllocatorAgent", ("portfolio allocation", "rebalance", "multi symbol")),
             ("VisionOverlordAgent", ("vision", "screen scan", "chart scan", "apex screen")),
             ("StealthControllerAgent", ("control app", "open app", "steuern", "vordergrund", "mouse move")),
-            ("GhostBrowserAgent", ("ghost browser", "background scan", "market headlines", "web intelligence")),
             ("PentestAgent", ("security audit", "pentest", "vulnerability scan", "hardening")),
         ]
 

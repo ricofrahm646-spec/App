@@ -45,6 +45,7 @@ class GhostBrowserAgent(BaseAgent):
 
     def _extract_topic(self, task: str) -> str:
         cleaned = task.lower().replace("scan", "").replace("news", "").replace("browser", "").strip()
+        cleaned = " ".join(cleaned.split())
         return cleaned or "forex market"
 
     def _score_sentiment(self, headlines: list[dict[str, Any]]) -> dict[str, Any]:
