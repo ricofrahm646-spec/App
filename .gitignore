@@ -1,0 +1,6 @@
+__pycache__/
+.pytest_cache/
+runtime/*.json
+runtime/*.log
+runtime/captures/*.png
+apps/**/__pycache__/
