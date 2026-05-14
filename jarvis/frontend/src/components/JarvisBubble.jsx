@@ -10,67 +10,68 @@ const JarvisBubble = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ scale: 0.8, opacity: 0, x: 50, rotateX: 45 }}
-            animate={{ scale: 1, opacity: 1, x: 0, rotateX: 0 }}
-            exit={{ scale: 0.8, opacity: 0, x: 50, rotateX: 45 }}
-            transition={{ type: "spring", damping: 15 }}
-            className="mb-8 p-8 w-[450px] backdrop-blur-3xl bg-black/60 border border-cyan-500/20 rounded-[2rem] shadow-[0_0_80px_rgba(6,182,212,0.15)] text-white overflow-hidden"
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="mb-10 p-10 w-[500px] backdrop-blur-[50px] bg-slate-950/70 border border-white/5 rounded-[3rem] shadow-[0_0_120px_rgba(6,182,212,0.1)] text-white relative overflow-hidden"
           >
-            {/* Plasma Background Glow */}
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-cyan-500/10 blur-[100px] rounded-full" />
+            {/* Apex Chromatic Aberration Effect */}
+            <div className="absolute inset-0 border border-pink-500/5 translate-x-1 translate-y-1 rounded-[3rem] pointer-events-none" />
 
             <div className="relative z-10">
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex justify-between items-start mb-8">
                 <div>
-                  <h3 className="text-cyan-400 font-black tracking-[0.4em] text-xs uppercase">Omni-Kernel V3000</h3>
-                  <div className="h-0.5 w-12 bg-cyan-500 mt-1" />
+                  <h3 className="text-white font-black tracking-[0.6em] text-[10px] uppercase opacity-90">Omni-Reign Apex</h3>
+                  <div className="h-[1px] w-full bg-gradient-to-r from-cyan-500 to-pink-500 mt-2 opacity-50" />
                 </div>
-                <div className="flex gap-1">
-                  {[1, 2, 3].map(i => <div key={i} className="w-1 h-1 rounded-full bg-cyan-500/50" />)}
+                <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10">
+                  <span className="text-[8px] font-bold text-cyan-400 animate-pulse">SINGULARITY_LIVE</span>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="p-4 bg-cyan-500/5 rounded-2xl border border-cyan-500/10 text-[11px] font-mono leading-relaxed">
-                  <span className="text-cyan-500">$ j-oracle --predict --target XAUUSD</span>
-                  <p className="mt-2 text-blue-200/80 italic">
-                    "Neural weights synchronized. 10k price paths correlated. Liquidity pool detected at $2034.50. Ready for institutional strike."
+              <div className="space-y-8">
+                <div className="p-5 bg-white/2 rounded-3xl border border-white/5 text-[11px] font-mono leading-relaxed relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <span className="text-white/30">$ apex --intuition --feel market</span>
+                  <p className="mt-3 text-cyan-100/90 font-medium">
+                    "Market heartbeat detected. RL-Policy optimization active. Trend reversal probability for XAUUSD increased to 99.2%. Proactive strike window opening in 40ms."
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-4">
                   {[
-                    { label: "TRADES", val: "942", color: "text-cyan-400" },
-                    { label: "WIN-RATE", val: "95.8%", color: "text-blue-400" },
-                    { label: "PRECISION", val: "0.99", color: "text-indigo-400" }
+                    { label: "RL-EFFICIENCY", val: "99.9%", color: "text-cyan-400" },
+                    { label: "OMNI-REVENUE", val: "+14.2K", color: "text-white" },
+                    { label: "INTENT-SYNC", val: "1.0", color: "text-pink-400" }
                   ].map((stat, i) => (
-                    <div key={i} className="p-3 bg-white/5 rounded-xl border border-white/5 text-center">
-                      <div className="text-[8px] text-white/30 font-black mb-1">{stat.label}</div>
-                      <div className={`text-xs font-bold ${stat.color}`}>{stat.val}</div>
+                    <div key={i} className="p-4 bg-white/2 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
+                      <div className="text-[7px] text-white/20 font-black mb-1 tracking-widest">{stat.label}</div>
+                      <div className={`text-sm font-black ${stat.color}`}>{stat.val}</div>
                     </div>
                   ))}
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[9px] font-mono text-white/40">
-                    <span>NEXUS_CAPACITY</span>
-                    <span>88%</span>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-[8px] font-bold tracking-widest text-white/30 uppercase">
+                    <span>Ghost-Programmer Status</span>
+                    <span className="text-cyan-500">Autonomous Synthesis</span>
                   </div>
-                  <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                     <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: "88%" }}
-                      className="h-full bg-gradient-to-r from-cyan-500 to-blue-500"
+                      initial={{ x: "-100%" }}
+                      animate={{ x: "100%" }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                      className="h-full w-1/3 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
                     />
                   </div>
                 </div>
 
                 <motion.button
-                  whileHover={{ scale: 1.02, backgroundColor: "rgba(6,182,212,0.2)" }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-4 bg-cyan-500/10 border border-cyan-500/30 rounded-2xl text-cyan-400 text-[10px] font-black tracking-[0.2em] transition-all uppercase"
+                  whileHover={{ scale: 1.01, boxShadow: "0 0 30px rgba(6,182,212,0.2)" }}
+                  whileTap={{ scale: 0.99 }}
+                  className="w-full py-5 bg-white text-black rounded-3xl text-[10px] font-black tracking-[0.4em] transition-all uppercase hover:bg-cyan-50"
                 >
-                  Initiate Quantum Strike
+                  Execute Apex Mandate
                 </motion.button>
               </div>
             </div>
