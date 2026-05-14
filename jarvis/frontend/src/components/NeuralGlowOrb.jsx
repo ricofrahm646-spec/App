@@ -3,69 +3,91 @@ import { motion } from 'framer-motion';
 
 const NeuralGlowOrb = () => {
   return (
-    <div className="relative flex items-center justify-center w-64 h-64">
-      {/* Outer Pulse */}
+    <div className="relative flex items-center justify-center w-72 h-72">
+      {/* Volumetric Plasma Field */}
       <motion.div
         animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.6, 0.3],
-          rotate: 360
+          scale: [1, 1.3, 1],
+          opacity: [0.2, 0.5, 0.2],
+          rotate: [0, 180, 360],
+          background: [
+            "radial-gradient(circle, rgba(6,182,212,0.2) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(59,130,246,0.2) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(6,182,212,0.2) 0%, transparent 70%)"
+          ]
         }}
         transition={{
-          duration: 4,
+          duration: 8,
           repeat: Infinity,
-          ease: "linear"
+          ease: "easeInOut"
         }}
-        className="absolute w-full h-full rounded-full border-2 border-cyan-500/30 blur-sm"
+        className="absolute w-full h-full rounded-full blur-2xl"
       />
 
-      {/* Holographic Rings */}
-      {[1, 2, 3].map((i) => (
+      {/* Ray-Traced HUD Rings */}
+      {[1, 2, 3, 4].map((i) => (
         <motion.div
           key={i}
           animate={{
             rotate: i % 2 === 0 ? 360 : -360,
-            scale: [1, 1.1, 1]
+            scale: [1, 1.05, 1],
+            borderColor: i % 2 === 0 ? "rgba(6,182,212,0.3)" : "rgba(59,130,246,0.3)"
           }}
           transition={{
-            duration: 10 / i,
+            duration: 15 / i,
             repeat: Infinity,
             ease: "linear"
           }}
-          className="absolute rounded-full border border-cyan-400/20"
+          className="absolute rounded-full border border-dashed shadow-[0_0_15px_rgba(6,182,212,0.1)]"
           style={{
-            width: `${100 - i * 15}%`,
-            height: `${100 - i * 15}%`,
-            borderDasharray: i * 10
+            width: `${100 - i * 12}%`,
+            height: `${100 - i * 12}%`,
+            borderWidth: '1px'
           }}
         />
       ))}
 
-      {/* Central Core (Neural Orb) */}
+      {/* V3000 Quantum Core */}
       <motion.div
         animate={{
           boxShadow: [
-            "0 0 20px rgba(6, 182, 212, 0.5)",
-            "0 0 50px rgba(6, 182, 212, 0.8)",
-            "0 0 20px rgba(6, 182, 212, 0.5)"
-          ]
+            "0 0 30px rgba(6, 182, 212, 0.4)",
+            "0 0 70px rgba(59, 130, 246, 0.6)",
+            "0 0 30px rgba(6, 182, 212, 0.4)"
+          ],
+          rotate: [0, 360]
         }}
         transition={{
-          duration: 2,
-          repeat: Infinity
+          duration: 5,
+          repeat: Infinity,
+          ease: "linear"
         }}
-        className="relative w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center overflow-hidden"
+        className="relative w-32 h-32 rounded-full bg-black flex items-center justify-center overflow-hidden border border-cyan-500/50"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/30 via-transparent to-transparent opacity-50" />
-        <div className="text-white font-bold text-xs tracking-tighter opacity-80">J.A.R.V.I.S</div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/20 via-blue-500/10 to-transparent" />
+        <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+
+        {/* Anti-rotation layer for text */}
+        <motion.div
+          animate={{ rotate: [0, -360] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+          className="flex flex-col items-center justify-center z-10"
+        >
+          <span className="text-[10px] font-black tracking-[0.3em] text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]">V3000</span>
+          <span className="text-[8px] font-mono text-blue-300 opacity-60">SINGULARITY</span>
+        </motion.div>
       </motion.div>
 
-      {/* Data HUD Lines */}
-      <div className="absolute -right-16 top-0 text-[8px] font-mono text-cyan-400 opacity-60 leading-tight">
-        <div>CORE_TEMP: 32°C</div>
-        <div>SWARM_NODES: 100</div>
-        <div>MEM_LOAD: 12%</div>
-        <div>MARKET_SYNC: 99.9%</div>
+      {/* Plasma Telemetry */}
+      <div className="absolute -right-24 top-0 text-[8px] font-mono text-cyan-400/80 space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-1 bg-cyan-500 animate-ping" />
+          ORACLE_CONF: 99.8%
+        </div>
+        <div>NEXUS_SYNC: ACTIVE</div>
+        <div>LATENCY: 0.002ms</div>
+        <div className="h-[1px] w-12 bg-cyan-500/30" />
+        <div className="text-blue-400/60 italic">"Always ahead."</div>
       </div>
     </div>
   );

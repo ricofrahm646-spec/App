@@ -1,28 +1,40 @@
+import asyncio
+import logging
 from typing import Dict, Any, List
 from jarvis.agents.base import BaseAgent
 
 class ManagerAgent:
-    """
-    """
     def __init__(self):
-        self.agents: Dict[str, BaseAgent] = {}
+        self.agents = {}
+        self.history = []
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger("MANAGER_AGENT")
 
     def register_agent(self, agent: BaseAgent):
         self.agents[agent.name.lower()] = agent
+        self.logger.info(f"AGENT_REGISTERED: {agent.name}")
 
-    async def handle_request(self, message: str) -> Dict[str, Any]:
-        msg = message.lower()
-        if "trade" in msg or "chart" in msg or "gold" in msg or "forex" in msg:
-            target = "tradingswarm"
-        elif "mail" in msg or "gmail" in msg or "calendar" in msg:
-            target = "commcommander"
-        elif "code" in msg or "app" in msg:
-            target = "coding"
-        elif "system" in msg or "open" in msg:
-            target = "system"
+    async def handle_request(self, task: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        self.logger.info(f"DELEGATING_TASK: {task}")
+        task_lower = task.lower()
+
+        # V3000 Routing Logic
+        if any(k in task_lower for k in ["predict", "gold", "market", "trade"]):
+            target = "neuraloracle"
+        elif any(k in task_lower for k in ["nexus", "memory", "auto", "pilot"]):
+            target = "nexuscore"
+        elif any(k in task_lower for k in ["gesture", "posture", "mode", "skeleton"]):
+            target = "kineticvision"
+        elif any(k in task_lower for k in ["refactor", "optimize", "kernel", "cpp"]):
+            target = "metaengine"
+        elif any(k in task_lower for k in ["mouse", "keyboard", "open", "type"]):
+            target = "systemoverlord"
+        elif any(k in task_lower for k in ["mail", "calendar", "inbox"]):
+            target = "gmailarchitect"
         else:
-            return {"response": "J.A.R.V.I.S. READY. AWAITING MISSION.", "agent": "manager"}
+            target = "tradingswarm" # Default legacy support
 
         if target in self.agents:
-            return await self.agents[target].process(message)
-        return {"response": f"NODE_{target.upper()} UNREACHABLE", "agent": "manager"}
+            return await self.agents[target].process(task, context)
+
+        return {"output": f"ERROR: Target agent '{target}' not synchronized.", "agent": "manager"}

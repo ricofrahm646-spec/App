@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Dict, Any, List
 from jarvis.agents.trading_swarm import TradingSwarm
-from jarvis.agents.coding_commander import CodingCommander
+from jarvis.agents.neural_oracle import NeuralOracle
 
 # MISSION: COORDINATE MASSIVE AGENT SWARM FOR MAXIMUM PARALLEL PROCESSING
 # SINGULARITY STATUS: ACTIVE
@@ -14,7 +14,7 @@ class SwarmManager:
     def __init__(self):
         self.agents = {
             "trading": TradingSwarm(),
-            "coding": CodingCommander()
+            "oracle": NeuralOracle()
         }
         self.active_nodes = 100 # Simulated neural nodes
         self.task_queue = asyncio.Queue()
@@ -30,7 +30,6 @@ class SwarmManager:
         agent = self.agents[agent_key]
         logger.info(f"SWARM_DISPATCH: Sending '{task}' to {agent_key}_agent")
 
-        # Simulate parallel execution across multiple "nodes"
         result = await agent.process(task)
         return result
 
@@ -42,7 +41,7 @@ class SwarmManager:
         tasks = []
         for i in range(10): # Scaled down for simulation but logic allows massive scale
             tasks.append(self.dispatch_task("trading", f"SCAN_MARKET_NODE_{i}"))
-            tasks.append(self.dispatch_task("coding", f"AUDIT_SYSTEM_NODE_{i}"))
+            tasks.append(self.dispatch_task("oracle", f"SCAN_NEURAL_NODE_{i}"))
 
         results = await asyncio.gather(*tasks)
         return {"status": "SUCCESS", "nodes_processed": len(results), "summary": "Singularity achieved."}

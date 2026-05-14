@@ -6,20 +6,25 @@ import time
 import uvicorn
 import logging
 
-# J.A.R.V.I.S. Core Imports
+# J.A.R.V.I.S. V3000 Core Imports
 from jarvis.agents.manager import ManagerAgent
 from jarvis.agents.trading_swarm import TradingSwarm
 from jarvis.agents.gmail_architect import GmailArchitect
 from jarvis.agents.system_overlord import SystemOverlord
+from jarvis.agents.neural_oracle import NeuralOracle
+from jarvis.core.nexus import NexusCore
+from jarvis.core.meta_engine import MetaEngine
+from jarvis.vision.kinetic import KineticVision
+from jarvis.ui.plasma_hud import PlasmaHUD
+
 from jarvis.factory.task_executor import TaskExecutor
 from jarvis.core.evolution import EvolutionCore
-from jarvis.vision.spatial_core import SpatialVisionCore
 
 # System Configuration
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("JARVIS_V1300_HUB")
+logger = logging.getLogger("JARVIS_V3000_SINGULARITY")
 
-app = FastAPI(title="JARVIS Singularity API")
+app = FastAPI(title="JARVIS V3000 Singularity API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,10 +39,14 @@ manager = ManagerAgent()
 manager.register_agent(TradingSwarm())
 manager.register_agent(GmailArchitect())
 manager.register_agent(SystemOverlord())
+manager.register_agent(NeuralOracle())
+manager.register_agent(NexusCore())
+manager.register_agent(MetaEngine())
+manager.register_agent(KineticVision())
 
 executor = TaskExecutor()
 evolution = EvolutionCore()
-vision = SpatialVisionCore()
+hud = PlasmaHUD()
 
 class MissionRequest(BaseModel):
     mission: str
@@ -54,43 +63,23 @@ async def mission_control_telemetry(request: Request, call_next):
 @app.get("/")
 def health_check():
     return {
-        "status": "SINGULARITY_ONLINE",
+        "status": "V3000_SINGULARITY_ONLINE",
         "timestamp": time.time(),
-        "modules": ["TRADING", "FACTORY", "COMM", "EVOLUTION", "VISION", "SYSTEM"]
+        "modules": ["NEURAL_ORACLE", "NEXUS", "KINETIC", "META_ENGINE", "PLASMA_HUD"]
     }
 
 @app.post("/mission")
 async def handle_mission_request(request: MissionRequest):
     """
-    Central Mission Control Endpoint.
-    Routes complex human intent to specialized autonomous agents.
+    Central Mission Control Endpoint V3000.
     """
     mission_id = time.time()
     logger.info(f"MISSION_RECEIVED: {request.mission} (ID: {mission_id})")
 
     try:
-        mission_lower = request.mission.lower()
-
-        # Priority Agent Routing
-        if any(k in mission_lower for k in ["trade", "gold", "forex", "pair", "market"]):
-            response = await manager.handle_request(request.mission)
-            return response
-
-        if any(k in mission_lower for k in ["gmail", "calendar", "mail", "schedule"]):
-            response = await manager.handle_request(request.mission)
-            return response
-
-        if any(k in mission_lower for k in ["mouse", "keyboard", "open", "type"]):
-            response = await manager.handle_request(request.mission)
-            return response
-
-        # Autonomous Problem Solving via Factory
-        result = await executor.execute_mission(request.mission)
-        return {
-            "response": f"FACTORY_MISSION_ACCOMPLISHED: {result['status']}",
-            "agent": "factory",
-            "data": result
-        }
+        # Route to Manager Agent for autonomous delegation
+        response = await manager.handle_request(request.mission)
+        return response
 
     except Exception as e:
         logger.error(f"MISSION_FAILURE: {str(e)}")
