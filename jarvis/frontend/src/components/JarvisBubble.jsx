@@ -1,95 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, TrendingUp, Code, Monitor, Send, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import NeuralGlowOrb from './NeuralGlowOrb';
 
 const JarvisBubble = () => {
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([
-    { role: 'jarvis', content: 'System online. JARVIS at your service.' }
-  ]);
-  const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userMsg = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setLoading(true);
-
-    try {
-      const response = await axios.post('http://localhost:8000/chat', { message: input });
-      setMessages(prev => [...prev, { role: 'jarvis', content: response.data.response, agent: response.data.agent }]);
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'jarvis', content: 'Error connecting to core systems.' }]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="fixed bottom-10 right-10 flex flex-col items-end">
+    <div className="fixed bottom-10 right-10 z-50">
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="glass w-96 h-[500px] rounded-3xl mb-6 p-6 flex flex-col shadow-2xl overflow-hidden relative"
+            initial={{ scale: 0, opacity: 0, y: 100 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0, opacity: 0, y: 100 }}
+            className="mb-8 p-6 w-96 backdrop-blur-xl bg-black/40 border border-cyan-500/30 rounded-3xl shadow-[0_0_50px_rgba(6,182,212,0.2)] text-white"
           >
-            {/* HUD Elements */}
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] text-jarvis-blue opacity-50 tracking-[0.2em]">
-              SYSTEM INTERFACE V4.2
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-cyan-400 font-bold tracking-widest text-sm">MISSION_CONTROL</h3>
+              <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-hide">
-              {messages.map((msg, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ x: msg.role === 'user' ? 20 : -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${
-                    msg.role === 'user'
-                    ? 'bg-jarvis-blue/20 text-white'
-                    : 'bg-white/5 text-jarvis-blue border border-jarvis-blue/30'
-                  }`}>
-                    {msg.content}
-                    {msg.agent && (
-                        <div className="text-[8px] mt-1 uppercase opacity-50 flex items-center gap-1">
-                            {msg.agent === 'trading' && <TrendingUp size={8}/>}
-                            {msg.agent === 'coding' && <Code size={8}/>}
-                            {msg.agent === 'system' && <Monitor size={8}/>}
-                            {msg.agent}
-                        </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-              {loading && (
-                <div className="flex justify-start">
-                  <Loader2 className="animate-spin text-jarvis-blue" size={20} />
+            <div className="space-y-4">
+              <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-xs font-mono">
+                <p className="text-cyan-300">$ Jarvis, status report.</p>
+                <p className="mt-2 text-white/70">"All systems operational. Trading swarm backtesting gold strategies with 96% precision target."</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                  <span className="text-white/40">BALANCE:</span> $20.00
                 </div>
-              )}
-            </div>
+                <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                  <span className="text-white/40">TARGET:</span> $100.00
+                </div>
+              </div>
 
-            <div className="mt-4 flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Talk to JARVIS..."
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-jarvis-blue"
-              />
-              <button
-                onClick={handleSend}
-                className="bg-jarvis-blue/20 hover:bg-jarvis-blue/40 text-jarvis-blue p-2 rounded-xl transition-colors"
-              >
-                <Send size={18} />
+              <button className="w-full py-2 bg-cyan-500/20 border border-cyan-500/50 rounded-xl text-cyan-400 text-xs font-bold hover:bg-cyan-500/40 transition-colors">
+                INITIALIZE_QUANTUM_TRADE
               </button>
             </div>
           </motion.div>
@@ -97,26 +44,12 @@ const JarvisBubble = () => {
       </AnimatePresence>
 
       <motion.div
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-20 h-20 rounded-full cursor-pointer flex items-center justify-center relative"
+        className="cursor-pointer"
       >
-        {/* Animated Glow Rings */}
-        <motion.div
-            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.1, 0.3] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-            className="absolute inset-0 bg-jarvis-blue rounded-full blur-xl"
-        />
-
-        <div className="w-16 h-16 rounded-full border-2 border-jarvis-blue flex items-center justify-center bg-jarvis-dark relative z-10 overflow-hidden">
-            <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
-                className="absolute inset-0 border-t-2 border-jarvis-blue/40 rounded-full"
-            />
-            <MessageSquare className="text-jarvis-blue" size={24} />
-        </div>
+        <NeuralGlowOrb />
       </motion.div>
     </div>
   );
