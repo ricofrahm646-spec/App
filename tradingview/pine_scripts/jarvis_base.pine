@@ -1,0 +1,71 @@
+//@version=5
+// JARVIS AI Trading OS – Base Strategy Template
+// Sends webhook alerts to JARVIS backend
+
+strategy("JARVIS Base Strategy", overlay=true, 
+         default_qty_type=strategy.percent_of_equity, 
+         default_qty_value=2, 
+         pyramiding=0,
+         commission_type=strategy.commission.percent, 
+         commission_value=0.01)
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+grp_ema = "EMA Settings"
+ema_fast = input.int(9,  title="Fast EMA",  group=grp_ema, minval=2)
+ema_slow = input.int(21, title="Slow EMA",  group=grp_ema, minval=5)
+ema_trend = input.int(50, title="Trend EMA", group=grp_ema, minval=10)
+
+grp_rsi = "RSI Settings"
+rsi_len = input.int(14, title="RSI Period", group=grp_rsi)
+rsi_ob  = input.int(70, title="Overbought", group=grp_rsi)
+rsi_os  = input.int(30, title="Oversold",   group=grp_rsi)
+
+grp_risk = "Risk Settings"
+sl_mult = input.float(1.5, title="ATR SL Multiplier", group=grp_risk, step=0.1)
+tp_mult = input.float(3.0, title="ATR TP Multiplier", group=grp_risk, step=0.1)
+
+grp_webhook = "JARVIS Webhook"
+webhook_url = input.string("http://localhost/api/tradingview/webhook", title="Webhook URL", group=grp_webhook)
+
+// ── Indicators ───────────────────────────────────────────────────────────────
+ema_f = ta.ema(close, ema_fast)
+ema_s = ta.ema(close, ema_slow)
+ema_t = ta.ema(close, ema_trend)
+rsi   = ta.rsi(close, rsi_len)
+atr   = ta.atr(14)
+
+// ── Conditions ───────────────────────────────────────────────────────────────
+trend_bull = close > ema_t
+cross_bull = ta.crossover(ema_f, ema_s)
+cross_bear = ta.crossunder(ema_f, ema_s)
+
+buy_cond  = cross_bull and trend_bull and rsi < rsi_ob and rsi > 40
+sell_cond = cross_bear and not trend_bull and rsi > rsi_os and rsi < 60
+
+// ── SL / TP ───────────────────────────────────────────────────────────────────
+sl_buy  = close - atr * sl_mult
+tp_buy  = close + atr * tp_mult
+sl_sell = close + atr * sl_mult
+tp_sell = close - atr * tp_mult
+
+// ── Signals ──────────────────────────────────────────────────────────────────
+if buy_cond
+    alert('{"symbol":"' + syminfo.ticker + '","action":"BUY","price":' + str.tostring(close) + ',"sl":' + str.tostring(sl_buy) + ',"tp":' + str.tostring(tp_buy) + ',"strategy":"JARVIS_BASE"}', alert.freq_once_per_bar_close)
+    strategy.entry("Long", strategy.long)
+    strategy.exit("Long Exit", "Long", stop=sl_buy, limit=tp_buy)
+
+if sell_cond
+    alert('{"symbol":"' + syminfo.ticker + '","action":"SELL","price":' + str.tostring(close) + ',"sl":' + str.tostring(sl_sell) + ',"tp":' + str.tostring(tp_sell) + ',"strategy":"JARVIS_BASE"}', alert.freq_once_per_bar_close)
+    strategy.entry("Short", strategy.short)
+    strategy.exit("Short Exit", "Short", stop=sl_sell, limit=tp_sell)
+
+// ── Plots ─────────────────────────────────────────────────────────────────────
+plot(ema_f, "Fast EMA", color=color.yellow,  linewidth=1)
+plot(ema_s, "Slow EMA", color=color.orange,  linewidth=1)
+plot(ema_t, "Trend EMA", color=color.white,  linewidth=2)
+
+plotshape(buy_cond,  style=shape.triangleup,   location=location.belowbar, color=color.lime,  size=size.small, title="BUY")
+plotshape(sell_cond, style=shape.triangledown, location=location.abovebar, color=color.red,   size=size.small, title="SELL")
+
+// Background
+bgcolor(trend_bull ? color.new(color.green, 95) : color.new(color.red, 95), title="Trend BG")

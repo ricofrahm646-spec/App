@@ -1,0 +1,82 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.cover
+*.log
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Node.js
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+backend/logs/
+logging/logs/
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# AI models
+ai/models/*.pt
+ai/models/*.h5
+ai/models/*.pkl
+ai/models/*.joblib
+!ai/models/__init__.py
+
+# Generated MQL5 files (keep templates, ignore generated)
+mql5/generated/experts/*.mq5
+mql5/generated/indicators/*.mq5
+!mql5/generated/experts/.gitkeep
+!mql5/generated/indicators/.gitkeep
+
+# Backend generated
+backend/generated/
+backend/jarvis_trading.db
+
+# SSL certificates
+deployment/ssl/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
