@@ -1,0 +1,16 @@
+#property strict
+
+input double RiskPerTrade = {{ risk_per_trade }};
+input int StopLossPoints = {{ stop_loss_points }};
+input int TakeProfitPoints = {{ take_profit_points }};
+
+int OnInit()
+{
+   Print("{{ advisor_name }} initialized");
+   return(INIT_SUCCEEDED);
+}
+
+void OnTick()
+{
+   // TODO: inject validated strategy logic
+}
