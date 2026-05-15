@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+yfinance
+pandas
+numpy
+pybind11
+httpx
+psutil
+scipy

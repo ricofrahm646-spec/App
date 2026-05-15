@@ -65,10 +65,11 @@ class HiveMind:
     async def process_missions(self, mission: str):
         logger.info(f"HIVE_MIND_SINGULARITY: Processing mission: {mission}")
         # Decompose mission and route to specialized sub-swarms
-        if "trade" in mission.lower():
+        m = mission.lower()
+        if "trade" in m:
             await self.broadcast("TRADING_CONTROL", f"EXECUTE_STRATEGY: {mission}")
-        elif "security" in mission.lower():
-            await self.broadcast("SENTINEL_CONTROL", f"SCAN_THREATS: {mission}")
+        elif "security" in m or "hack" in m or "crack" in m:
+            await self.broadcast("CYBER_OMEGA_CONTROL", f"INITIATE_PENETRATION: {mission}")
 
         return {"status": "MISSION_DISPATCHED", "swarm_nodes": len(self.agents)}
 

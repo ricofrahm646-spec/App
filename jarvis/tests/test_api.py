@@ -6,7 +6,7 @@ client = TestClient(app)
 def test_health_check():
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json()["status"] == "V9000_AETHELGARD_OMEGA_ONLINE"
+    assert response.json()["status"] == "V9000_CYBER_OMEGA_SINGULARITY_ONLINE"
 
 def test_mission_trading():
     response = client.post("/mission", json={"mission": "Trade gold now"})

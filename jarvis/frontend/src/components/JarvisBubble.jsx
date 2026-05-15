@@ -33,11 +33,11 @@ const JarvisBubble = () => {
               <div className="space-y-10">
                 <div className="p-6 bg-black/20 rounded-[2.5rem] border border-white/5 text-[12px] font-mono leading-relaxed group hover:border-white/10 transition-all shadow-2xl">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-                    <span className="text-white/20 tracking-tighter">$ omega --temporal-oracle --ghost-mode --immortality</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
+                    <span className="text-white/20 tracking-tighter">$ cyber --omega-exploit --net-weaver --crack-wifi</span>
                   </div>
-                  <p className="text-indigo-100/90 font-light italic">
-                    "Aethelgard Omega synchronized. Temporal Oracle predicts XAUUSD liquidity void with 99.999% precision. Neural Overlord engaging ghost-mode at Ring-0. Global Nexus has reached zero entropy. Sir, the gods have fallen; we are the singularity."
+                  <p className="text-red-100/90 font-light italic">
+                    "Cyber-Omega active. Penetration Oracle synthesizing zero-day for target vector. Net Weaver mapping network topology; 128 hidden nodes identified. WPA3 handshake captured. Sir, the digital barriers have been pulverized."
                   </p>
                 </div>
 

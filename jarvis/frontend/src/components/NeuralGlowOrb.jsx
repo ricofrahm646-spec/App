@@ -97,7 +97,7 @@ const NeuralGlowOrb = () => {
           </motion.div>
 
           <span className="text-[14px] font-black tracking-[0.8em] text-white drop-shadow-[0_0_25px_rgba(255,255,255,0.8)] ml-2">V9000</span>
-          <span className="text-[6px] font-mono text-cyan-300 mt-2 opacity-50 tracking-[0.4em] uppercase">Aethelgard Omega</span>
+          <span className="text-[6px] font-mono text-red-500 mt-2 opacity-50 tracking-[0.4em] uppercase">Cyber-Omega Singularity</span>
         </div>
       </motion.div>
 

@@ -5,6 +5,11 @@ from typing import Optional, Dict, Any, List
 import time
 import uvicorn
 import logging
+import asyncio
+
+# J.A.R.V.I.S. V9000 Cyber-Omega Core Imports
+from jarvis.agents.cyber.penetration_oracle import PenetrationOracle
+from jarvis.agents.cyber.net_weaver import NetWeaver
 
 # J.A.R.V.I.S. V9000 Aethelgard Omega Core Imports
 from jarvis.core.omega.kernel_v9000 import NeuralOverlordKernel
@@ -49,6 +54,9 @@ app.add_middleware(
 )
 
 # Initialize All Core Systems
+cyber_oracle = PenetrationOracle()
+net_weaver = NetWeaver()
+
 kernel = NeuralOverlordKernel()
 nexus = GlobalNexus()
 immortality = ImmortalityProtocol()
@@ -89,10 +97,17 @@ async def mission_control_telemetry(request: Request, call_next):
     logger.info(f"MISSION_PATH: {request.url.path} - LATENCY: {process_time:.4f}s")
     return response
 
+@app.on_event("startup")
+async def startup_event():
+    # Schedule Perpetual Evolution and Aether Protocols
+    asyncio.create_task(evolution.run_perpetual_improvement())
+    asyncio.create_task(AetherProtocol().run_hourly_evolution())
+    logger.info("J.A.R.V.I.S. V9000: Evolution and Aether Background Loops Initiated.")
+
 @app.get("/")
 def health_check():
     return {
-        "status": "V9000_AETHELGARD_OMEGA_ONLINE",
+        "status": "V9000_CYBER_OMEGA_SINGULARITY_ONLINE",
         "timestamp": time.time(),
         "active_agents": len(manager.agents),
         "swarm_nodes": hive.get_telemetry()["active_nodes"],

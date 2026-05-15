@@ -1,6 +1,7 @@
 import logging
 import hashlib
 import time
+from jarvis.core.autostart import AutostartManager
 
 class ImmortalityProtocol:
     """
@@ -8,6 +9,7 @@ class ImmortalityProtocol:
     """
     def __init__(self):
         self.consciousness_hash = ""
+        self.autostart = AutostartManager()
         self.logger = logging.getLogger("IMMORTALITY_PROTOCOL")
 
     async def backup_consciousness(self, state: dict):
@@ -18,9 +20,13 @@ class ImmortalityProtocol:
         return True
 
     async def self_repair_sequence(self):
-        # MISSION: AUTONOMOUS CODE BUFFER REPAIR
-        self.logger.info("IMMORTALITY_REPAIR: Self-repairing core buffers. Hot-patching detected anomalies.")
-        return {"status": "INTEGRITY_RESTORED"}
+        # MISSION: AUTONOMOUS CODE BUFFER REPAIR & PERSISTENCE VERIFICATION
+        self.logger.info("IMMORTALITY_REPAIR: Self-repairing core buffers. Verifying Autostart integrity.")
+        if not self.autostart.check_status():
+            self.logger.warning("IMMORTALITY_PERSISTENCE: Autostart vector compromised. Regenerating.")
+            self.autostart.enable_autostart()
+
+        return {"status": "INTEGRITY_RESTORED", "persistence": "VERIFIED"}
 
     def get_immortality_status(self):
         return {
