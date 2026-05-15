@@ -1,0 +1,18 @@
+{
+  "supported_types": [
+    "scalping",
+    "ict",
+    "smart_money",
+    "liquidity_sweep",
+    "orderblock",
+    "trend_following",
+    "mean_reversion",
+    "breakout",
+    "momentum",
+    "session"
+  ],
+  "selection_policy": {
+    "prioritize": ["validated_profit_factor", "low_drawdown", "large_sample_size"],
+    "deactivate_when": ["risk_policy_breach", "walk_forward_failure", "live_drawdown_limit"]
+  }
+}

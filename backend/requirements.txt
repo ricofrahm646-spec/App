@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+python-multipart
+httpx
+cryptography
+psycopg[binary]
+redis
+numpy
+pandas
+backtrader
+vectorbt
+MetaTrader5
+xgboost
+optuna
+torch
+tensorflow
