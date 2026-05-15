@@ -246,8 +246,11 @@ class ChatEngine:
         command = self.parser.parse(user_input)
         logger.info("Parsed command: intent=%s params=%s", command.intent.name, command.parameters)
 
-        handler = self._DISPATCH.get(command.intent, self._handle_unknown)
-        response = handler(self, command)
+        unbound = self._DISPATCH.get(command.intent)
+        if unbound is not None:
+            response = unbound(self, command)
+        else:
+            response = self._handle_unknown(command)
         self._history.append(response)
         return response
 
