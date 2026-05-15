@@ -1,533 +1,723 @@
 """
-MT5 Service - wraps MetaTrader 5 Python API.
-MT5 is Windows-only; on non-Windows environments the module is mocked so the
-rest of the application can still start and serve requests.
+MetaTrader 5 service for the JARVIS AI Trading OS.
+
+MT5 is Windows-only; on non-Windows environments the module is mocked so
+the rest of the application can still start and serve API requests.
 """
-import logging
-import platform
+import asyncio
+import functools
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
-# MT5 is only available on Windows.
 try:
     import MetaTrader5 as mt5
     MT5_AVAILABLE = True
 except ImportError:
     mt5 = None  # type: ignore
     MT5_AVAILABLE = False
-    logger.warning("MetaTrader5 package not available (non-Windows environment). MT5 features will return mock data.")
+    logger.warning(
+        "MetaTrader5 package not available (non-Windows environment). "
+        "MT5 features will return mock data."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Timeframe / order-type look-up tables
+# ---------------------------------------------------------------------------
+
+_TIMEFRAME_MAP: Dict[str, Any] = {
+    "M1":  mt5.TIMEFRAME_M1  if MT5_AVAILABLE else 1,
+    "M5":  mt5.TIMEFRAME_M5  if MT5_AVAILABLE else 5,
+    "M15": mt5.TIMEFRAME_M15 if MT5_AVAILABLE else 15,
+    "M30": mt5.TIMEFRAME_M30 if MT5_AVAILABLE else 30,
+    "H1":  mt5.TIMEFRAME_H1  if MT5_AVAILABLE else 16385,
+    "H4":  mt5.TIMEFRAME_H4  if MT5_AVAILABLE else 16388,
+    "D1":  mt5.TIMEFRAME_D1  if MT5_AVAILABLE else 16408,
+    "W1":  mt5.TIMEFRAME_W1  if MT5_AVAILABLE else 32769,
+    "MN1": mt5.TIMEFRAME_MN1 if MT5_AVAILABLE else 49153,
+}
+
+_ORDER_TYPE_MAP: Dict[str, Any] = {
+    "BUY":       mt5.ORDER_TYPE_BUY       if MT5_AVAILABLE else 0,
+    "SELL":      mt5.ORDER_TYPE_SELL      if MT5_AVAILABLE else 1,
+    "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT if MT5_AVAILABLE else 2,
+    "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT if MT5_AVAILABLE else 3,
+    "BUY_STOP":  mt5.ORDER_TYPE_BUY_STOP  if MT5_AVAILABLE else 4,
+    "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP  if MT5_AVAILABLE else 5,
+}
+
+
+def _run_in_executor(func, *args):
+    """Execute a synchronous MT5 call on a thread-pool executor."""
+    loop = asyncio.get_event_loop()
+    return loop.run_in_executor(None, lambda: func(*args))
 
 
 class MT5Service:
-    """Singleton-style service for MT5 operations."""
+    """
+    Async service layer for all MetaTrader 5 interactions.
 
-    _connected: bool = False
-    _account_info: Optional[Dict] = None
+    All public methods are coroutines so they can be awaited from FastAPI
+    endpoints and background tasks without blocking the event loop.
+    On non-Windows systems the service automatically returns realistic mock data.
+    """
 
-    # --------------------------------------------------------------------- #
-    # Connection management                                                   #
-    # --------------------------------------------------------------------- #
+    MAX_DRAWDOWN_PERCENT: float = 0.20   # 20 % → close all
+    MAX_CONCURRENT_TRADES: int = 1
 
-    @classmethod
-    def connect(
-        cls,
-        login: Optional[int] = None,
-        password: Optional[str] = None,
-        server: Optional[str] = None,
-        path: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    def __init__(self) -> None:
+        self._connected: bool = False
+        self._account_login: Optional[int] = None
+        self._drawdown_monitor_task: Optional[asyncio.Task] = None
+
+    # ------------------------------------------------------------------
+    # Connection management
+    # ------------------------------------------------------------------
+
+    async def connect(self, login: int, password: str, server: str) -> bool:
+        """Initialise MT5 terminal and log into the specified account."""
         if not MT5_AVAILABLE:
-            cls._connected = True
-            return {"success": True, "message": "MT5 running in mock mode (non-Windows environment)"}
-
-        kwargs: Dict[str, Any] = {}
-        if path:
-            kwargs["path"] = path
-        if login:
-            kwargs["login"] = login
-        if password:
-            kwargs["password"] = password
-        if server:
-            kwargs["server"] = server
-
-        if not mt5.initialize(**kwargs):
-            error = mt5.last_error()
-            return {"success": False, "message": f"MT5 initialization failed: {error}"}
-
-        cls._connected = True
-        info = mt5.account_info()
-        if info:
-            cls._account_info = info._asdict()
-        return {"success": True, "message": "Connected to MT5", "account": cls._account_info}
-
-    @classmethod
-    def disconnect(cls) -> Dict[str, Any]:
-        if MT5_AVAILABLE and cls._connected:
-            mt5.shutdown()
-        cls._connected = False
-        cls._account_info = None
-        return {"success": True, "message": "Disconnected from MT5"}
-
-    @classmethod
-    def is_connected(cls) -> bool:
-        if not MT5_AVAILABLE:
-            return cls._connected
-        if not cls._connected:
-            return False
+            logger.info("MT5 connect (mock mode) — returning success.")
+            self._connected = True
+            self._account_login = login
+            return True
         try:
-            info = mt5.account_info()
-            return info is not None
-        except Exception:
-            cls._connected = False
+            loop = asyncio.get_event_loop()
+            initialized = await loop.run_in_executor(None, mt5.initialize)
+            if not initialized:
+                logger.error(f"MT5 initialize() failed: {mt5.last_error()}")
+                return False
+
+            logged_in = await loop.run_in_executor(
+                None, lambda: mt5.login(login, password=password, server=server)
+            )
+            if not logged_in:
+                logger.error(f"MT5 login failed for {login}@{server}: {mt5.last_error()}")
+                return False
+
+            self._connected = True
+            self._account_login = login
+            logger.info(f"MT5 connected: account={login} server={server}")
+
+            self._drawdown_monitor_task = asyncio.create_task(self.monitor_drawdown())
+            return True
+        except Exception as exc:
+            logger.exception(f"MT5 connect error: {exc}")
             return False
 
-    @classmethod
-    def get_status(cls) -> Dict[str, Any]:
-        connected = cls.is_connected()
-        result: Dict[str, Any] = {
-            "connected": connected,
-            "mt5_available": MT5_AVAILABLE,
-            "platform": platform.system(),
+    async def disconnect(self) -> None:
+        """Shut down the MT5 connection and cancel background tasks."""
+        if self._drawdown_monitor_task and not self._drawdown_monitor_task.done():
+            self._drawdown_monitor_task.cancel()
+            try:
+                await self._drawdown_monitor_task
+            except asyncio.CancelledError:
+                pass
+
+        if MT5_AVAILABLE:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, mt5.shutdown)
+
+        self._connected = False
+        self._account_login = None
+        logger.info("MT5 disconnected.")
+
+    async def is_connected(self) -> bool:
+        """Return True if the MT5 terminal is reachable and authenticated."""
+        if not self._connected:
+            return False
+        if not MT5_AVAILABLE:
+            return True
+        loop = asyncio.get_event_loop()
+        info = await loop.run_in_executor(None, mt5.account_info)
+        return info is not None
+
+    # ------------------------------------------------------------------
+    # Account information
+    # ------------------------------------------------------------------
+
+    async def get_account_info(self) -> Dict:
+        """Return key account metrics (balance, equity, margin, …)."""
+        if not MT5_AVAILABLE:
+            return self._mock_account()
+
+        loop = asyncio.get_event_loop()
+        info = await loop.run_in_executor(None, mt5.account_info)
+        if info is None:
+            raise RuntimeError(f"Cannot fetch account info: {mt5.last_error()}")
+        return {
+            "login":        info.login,
+            "name":         info.name,
+            "server":       info.server,
+            "currency":     info.currency,
+            "leverage":     info.leverage,
+            "balance":      info.balance,
+            "equity":       info.equity,
+            "margin":       info.margin,
+            "free_margin":  info.margin_free,
+            "margin_level": info.margin_level,
+            "profit":       info.profit,
         }
-        if connected and MT5_AVAILABLE:
-            terminal = mt5.terminal_info()
-            if terminal:
-                result["terminal"] = terminal._asdict()
-        return result
 
-    # --------------------------------------------------------------------- #
-    # Account                                                                 #
-    # --------------------------------------------------------------------- #
+    # ------------------------------------------------------------------
+    # Trade queries
+    # ------------------------------------------------------------------
 
-    @classmethod
-    def get_account_info(cls) -> Dict[str, Any]:
+    async def get_open_trades(self) -> List[Dict]:
+        """Return all currently open positions."""
         if not MT5_AVAILABLE:
-            return cls._mock_account()
-        if not cls.is_connected():
-            raise ConnectionError("Not connected to MT5")
-        info = mt5.account_info()
-        if not info:
-            raise RuntimeError(f"Failed to get account info: {mt5.last_error()}")
-        return info._asdict()
+            return self._mock_positions()
 
-    # --------------------------------------------------------------------- #
-    # Positions                                                               #
-    # --------------------------------------------------------------------- #
-
-    @classmethod
-    def get_positions(cls, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
-        if not MT5_AVAILABLE:
-            return cls._mock_positions()
-        if not cls.is_connected():
-            raise ConnectionError("Not connected to MT5")
-        positions = mt5.positions_get(symbol=symbol) if symbol else mt5.positions_get()
+        loop = asyncio.get_event_loop()
+        positions = await loop.run_in_executor(None, mt5.positions_get)
         if positions is None:
             return []
-        return [p._asdict() for p in positions]
-
-    # --------------------------------------------------------------------- #
-    # History                                                                 #
-    # --------------------------------------------------------------------- #
-
-    @classmethod
-    def get_history(cls, days: int = 30) -> List[Dict[str, Any]]:
-        if not MT5_AVAILABLE:
-            return cls._mock_history()
-        if not cls.is_connected():
-            raise ConnectionError("Not connected to MT5")
-        date_from = datetime.utcnow() - timedelta(days=days)
-        date_to = datetime.utcnow()
-        deals = mt5.history_deals_get(date_from, date_to)
-        if deals is None:
-            return []
-        return [d._asdict() for d in deals]
-
-    # --------------------------------------------------------------------- #
-    # Orders                                                                  #
-    # --------------------------------------------------------------------- #
-
-    @classmethod
-    def place_order(
-        cls,
-        symbol: str,
-        order_type: str,
-        lot_size: float,
-        stop_loss: float = 0.0,
-        take_profit: float = 0.0,
-        comment: str = "",
-        magic: int = 12345,
-        price: Optional[float] = None,
-    ) -> Dict[str, Any]:
-        if not MT5_AVAILABLE:
-            return cls._mock_order_result(symbol, order_type, lot_size)
-        if not cls.is_connected():
-            raise ConnectionError("Not connected to MT5")
-
-        tick = mt5.symbol_info_tick(symbol)
-        if not tick:
-            raise ValueError(f"Cannot get tick for symbol: {symbol}")
-
-        if order_type.upper() == "BUY":
-            mt5_order_type = mt5.ORDER_TYPE_BUY
-            exec_price = tick.ask
-        else:
-            mt5_order_type = mt5.ORDER_TYPE_SELL
-            exec_price = tick.bid
-
-        request = {
-            "action": mt5.TRADE_ACTION_DEAL,
-            "symbol": symbol,
-            "volume": lot_size,
-            "type": mt5_order_type,
-            "price": price or exec_price,
-            "sl": stop_loss,
-            "tp": take_profit,
-            "comment": comment,
-            "magic": magic,
-            "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
-        }
-        result = mt5.order_send(request)
-        if result is None:
-            raise RuntimeError(f"order_send returned None: {mt5.last_error()}")
-        res_dict = result._asdict()
-        if result.retcode != mt5.TRADE_RETCODE_DONE:
-            raise RuntimeError(f"Order failed [{result.retcode}]: {result.comment}")
-        return res_dict
-
-    @classmethod
-    def close_position(cls, ticket: int) -> Dict[str, Any]:
-        if not MT5_AVAILABLE:
-            return {"success": True, "ticket": ticket, "message": "Position closed (mock)"}
-        if not cls.is_connected():
-            raise ConnectionError("Not connected to MT5")
-
-        positions = mt5.positions_get(ticket=ticket)
-        if not positions:
-            raise ValueError(f"Position #{ticket} not found")
-
-        pos = positions[0]
-        symbol = pos.symbol
-        lot = pos.volume
-        tick = mt5.symbol_info_tick(symbol)
-        if not tick:
-            raise ValueError(f"Cannot get tick for {symbol}")
-
-        if pos.type == mt5.ORDER_TYPE_BUY:
-            close_type = mt5.ORDER_TYPE_SELL
-            close_price = tick.bid
-        else:
-            close_type = mt5.ORDER_TYPE_BUY
-            close_price = tick.ask
-
-        request = {
-            "action": mt5.TRADE_ACTION_DEAL,
-            "symbol": symbol,
-            "volume": lot,
-            "type": close_type,
-            "position": ticket,
-            "price": close_price,
-            "comment": "JARVIS close",
-            "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC,
-        }
-        result = mt5.order_send(request)
-        if result is None:
-            raise RuntimeError(f"Close failed: {mt5.last_error()}")
-        if result.retcode != mt5.TRADE_RETCODE_DONE:
-            raise RuntimeError(f"Close failed [{result.retcode}]: {result.comment}")
-        return result._asdict()
-
-    @classmethod
-    def close_all_positions(cls) -> Dict[str, Any]:
-        positions = cls.get_positions()
-        closed = []
-        errors = []
-        for pos in positions:
-            try:
-                res = cls.close_position(pos["ticket"])
-                closed.append(res)
-            except Exception as exc:
-                errors.append({"ticket": pos.get("ticket"), "error": str(exc)})
-        return {"closed": len(closed), "errors": errors}
-
-    @classmethod
-    def modify_position(cls, ticket: int, stop_loss: float, take_profit: float) -> Dict[str, Any]:
-        if not MT5_AVAILABLE:
-            return {"success": True, "ticket": ticket, "stop_loss": stop_loss, "take_profit": take_profit}
-        if not cls.is_connected():
-            raise ConnectionError("Not connected to MT5")
-
-        request = {
-            "action": mt5.TRADE_ACTION_SLTP,
-            "position": ticket,
-            "sl": stop_loss,
-            "tp": take_profit,
-        }
-        result = mt5.order_send(request)
-        if result is None:
-            raise RuntimeError(f"Modify failed: {mt5.last_error()}")
-        if result.retcode != mt5.TRADE_RETCODE_DONE:
-            raise RuntimeError(f"Modify failed [{result.retcode}]: {result.comment}")
-        return result._asdict()
-
-    # --------------------------------------------------------------------- #
-    # Symbol / Price                                                          #
-    # --------------------------------------------------------------------- #
-
-    @classmethod
-    def get_symbol_info(cls, symbol: str) -> Dict[str, Any]:
-        if not MT5_AVAILABLE:
-            return cls._mock_symbol_info(symbol)
-        if not cls.is_connected():
-            raise ConnectionError("Not connected to MT5")
-        info = mt5.symbol_info(symbol)
-        if not info:
-            raise ValueError(f"Symbol '{symbol}' not found")
-        return info._asdict()
-
-    @classmethod
-    def get_price(cls, symbol: str) -> Dict[str, Any]:
-        if not MT5_AVAILABLE:
-            return cls._mock_price(symbol)
-        if not cls.is_connected():
-            raise ConnectionError("Not connected to MT5")
-        tick = mt5.symbol_info_tick(symbol)
-        if not tick:
-            raise ValueError(f"Cannot get tick for '{symbol}'")
-        return tick._asdict()
-
-    @classmethod
-    def get_charts(cls) -> List[Dict[str, Any]]:
-        if not MT5_AVAILABLE:
-            return [{"symbol": "EURUSD", "timeframe": "H1"}, {"symbol": "GBPUSD", "timeframe": "M15"}]
-        # Navigator through all windows is not directly supported via API;
-        # we list symbols currently subscribed.
-        symbols = mt5.symbols_get()
-        if not symbols:
-            return []
-        return [{"symbol": s.name, "visible": s.visible} for s in symbols if s.visible]
-
-    # --------------------------------------------------------------------- #
-    # Mock helpers (non-Windows)                                              #
-    # --------------------------------------------------------------------- #
-
-    @staticmethod
-    def _mock_account() -> Dict[str, Any]:
-        return {
-            "login": 12345678,
-            "trade_mode": 0,
-            "leverage": 100,
-            "limit_orders": 200,
-            "margin_so_mode": 0,
-            "trade_allowed": True,
-            "trade_expert": True,
-            "margin_mode": 2,
-            "currency_digits": 2,
-            "fifo_close": False,
-            "balance": 10000.00,
-            "credit": 0.00,
-            "profit": 125.50,
-            "equity": 10125.50,
-            "margin": 250.00,
-            "margin_free": 9875.50,
-            "margin_level": 4050.20,
-            "margin_so_call": 50.0,
-            "margin_so_so": 20.0,
-            "margin_initial": 0.0,
-            "margin_maintenance": 0.0,
-            "assets": 0.0,
-            "liabilities": 0.0,
-            "commission_blocked": 0.0,
-            "name": "JARVIS Demo Account",
-            "server": "MetaQuotes-Demo",
-            "currency": "USD",
-            "company": "MetaQuotes Software Corp.",
-        }
-
-    @staticmethod
-    def _mock_positions() -> List[Dict[str, Any]]:
         return [
             {
-                "ticket": 100001,
-                "time": int(datetime.utcnow().timestamp()),
-                "time_msc": int(datetime.utcnow().timestamp() * 1000),
-                "time_update": int(datetime.utcnow().timestamp()),
-                "time_update_msc": int(datetime.utcnow().timestamp() * 1000),
-                "type": 0,
-                "magic": 12345,
-                "identifier": 100001,
-                "reason": 0,
-                "volume": 0.10,
-                "price_open": 1.08500,
-                "sl": 1.08200,
-                "tp": 1.09000,
-                "price_current": 1.08650,
-                "swap": -0.50,
-                "profit": 15.00,
-                "symbol": "EURUSD",
-                "comment": "JARVIS AI",
-                "external_id": "",
+                "ticket":        p.ticket,
+                "symbol":        p.symbol,
+                "type":          "BUY" if p.type == mt5.ORDER_TYPE_BUY else "SELL",
+                "volume":        p.volume,
+                "open_price":    p.price_open,
+                "current_price": p.price_current,
+                "sl":            p.sl,
+                "tp":            p.tp,
+                "profit":        p.profit,
+                "swap":          p.swap,
+                "commission":    p.commission,
+                "open_time":     datetime.fromtimestamp(p.time).isoformat(),
+                "comment":       p.comment,
+                "magic":         p.magic,
             }
+            for p in positions
         ]
 
+    async def get_trade_history(self, days: int = 30) -> List[Dict]:
+        """Return closed deal history for the last *days* calendar days."""
+        if not MT5_AVAILABLE:
+            return self._mock_history()
+
+        loop = asyncio.get_event_loop()
+        date_from = datetime.now() - timedelta(days=days)
+        date_to = datetime.now()
+        deals = await loop.run_in_executor(
+            None, lambda: mt5.history_deals_get(date_from, date_to)
+        )
+        if deals is None:
+            return []
+        return [
+            {
+                "ticket":     d.ticket,
+                "order":      d.order,
+                "symbol":     d.symbol,
+                "type":       d.type,
+                "entry":      d.entry,
+                "volume":     d.volume,
+                "price":      d.price,
+                "profit":     d.profit,
+                "swap":       d.swap,
+                "commission": d.commission,
+                "time":       datetime.fromtimestamp(d.time).isoformat(),
+                "comment":    d.comment,
+                "magic":      d.magic,
+            }
+            for d in deals
+        ]
+
+    # ------------------------------------------------------------------
+    # Order execution
+    # ------------------------------------------------------------------
+
+    async def place_order(
+        self,
+        symbol: str,
+        order_type: str,
+        lot: float,
+        sl: float,
+        tp: float,
+        comment: str = "JARVIS",
+        magic: int = 20240101,
+    ) -> Dict:
+        """
+        Place a market order after validating risk constraints.
+
+        Enforces:
+        - Maximum 1 concurrent open trade.
+        - No opposing direction on the same symbol.
+
+        Returns a dict with ticket, status, price, and execution details.
+        Raises ValueError for constraint violations, RuntimeError for MT5 errors.
+        """
+        order_type_upper = order_type.upper()
+        if order_type_upper not in _ORDER_TYPE_MAP:
+            raise ValueError(f"Unsupported order_type: {order_type}")
+
+        open_trades = await self.get_open_trades()
+        if len(open_trades) >= self.MAX_CONCURRENT_TRADES:
+            raise ValueError(
+                f"Cannot place order: {len(open_trades)} trade(s) already open. "
+                "Close existing positions first."
+            )
+
+        # Check for opposing trade on same symbol
+        for trade in open_trades:
+            if trade["symbol"] == symbol.upper() and trade["type"] != order_type_upper:
+                raise ValueError(
+                    f"Opposing {trade['type']} already open for {symbol}. "
+                    "Cannot place {order_type_upper}."
+                )
+
+        if not MT5_AVAILABLE:
+            return self._mock_order_result(symbol, order_type_upper, lot)
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, lambda: mt5.symbol_select(symbol, True))
+        tick = await loop.run_in_executor(None, lambda: mt5.symbol_info_tick(symbol))
+        if tick is None:
+            raise RuntimeError(f"Cannot get tick for {symbol}: {mt5.last_error()}")
+
+        is_buy = order_type_upper in ("BUY", "BUY_LIMIT", "BUY_STOP")
+        price = tick.ask if is_buy else tick.bid
+
+        sym_info = await loop.run_in_executor(None, lambda: mt5.symbol_info(symbol))
+        filling = mt5.ORDER_FILLING_IOC
+        if sym_info and (sym_info.filling_mode & mt5.SYMBOL_FILLING_FOK):
+            filling = mt5.ORDER_FILLING_FOK
+
+        request = {
+            "action":       mt5.TRADE_ACTION_DEAL,
+            "symbol":       symbol,
+            "volume":       float(lot),
+            "type":         _ORDER_TYPE_MAP[order_type_upper],
+            "price":        price,
+            "sl":           float(sl),
+            "tp":           float(tp),
+            "deviation":    20,
+            "magic":        magic,
+            "comment":      comment,
+            "type_time":    mt5.ORDER_TIME_GTC,
+            "type_filling": filling,
+        }
+        result = await loop.run_in_executor(None, lambda: mt5.order_send(request))
+        if result is None:
+            raise RuntimeError(f"order_send returned None: {mt5.last_error()}")
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            raise RuntimeError(
+                f"Order failed [retcode={result.retcode}]: {result.comment}"
+            )
+
+        logger.info(
+            f"Order placed: {order_type_upper} {lot} {symbol} @ {price} "
+            f"SL={sl} TP={tp} ticket={result.order}"
+        )
+        return {
+            "ticket":  result.order,
+            "symbol":  symbol,
+            "type":    order_type_upper,
+            "volume":  lot,
+            "price":   result.price,
+            "sl":      sl,
+            "tp":      tp,
+            "status":  "filled",
+            "retcode": result.retcode,
+            "comment": result.comment,
+        }
+
+    async def close_order(self, ticket: int) -> bool:
+        """Close a specific open position by ticket number."""
+        if not MT5_AVAILABLE:
+            logger.info(f"close_order mock: ticket={ticket}")
+            return True
+
+        loop = asyncio.get_event_loop()
+        positions = await loop.run_in_executor(
+            None, lambda: mt5.positions_get(ticket=ticket)
+        )
+        if not positions:
+            logger.warning(f"close_order: no open position with ticket {ticket}")
+            return False
+
+        pos = positions[0]
+        is_buy_close = pos.type != mt5.ORDER_TYPE_BUY
+        close_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+        tick = await loop.run_in_executor(None, lambda: mt5.symbol_info_tick(pos.symbol))
+        price = tick.bid if is_buy_close else tick.ask
+
+        sym_info = await loop.run_in_executor(None, lambda: mt5.symbol_info(pos.symbol))
+        filling = mt5.ORDER_FILLING_IOC
+        if sym_info and (sym_info.filling_mode & mt5.SYMBOL_FILLING_FOK):
+            filling = mt5.ORDER_FILLING_FOK
+
+        request = {
+            "action":       mt5.TRADE_ACTION_DEAL,
+            "symbol":       pos.symbol,
+            "volume":       pos.volume,
+            "type":         close_type,
+            "position":     ticket,
+            "price":        price,
+            "deviation":    20,
+            "magic":        pos.magic,
+            "comment":      "JARVIS close",
+            "type_time":    mt5.ORDER_TIME_GTC,
+            "type_filling": filling,
+        }
+        result = await loop.run_in_executor(None, lambda: mt5.order_send(request))
+        if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
+            logger.error(
+                f"Failed to close ticket {ticket}: "
+                f"{result.comment if result else mt5.last_error()}"
+            )
+            return False
+
+        logger.info(f"Closed ticket={ticket} profit={pos.profit:.2f}")
+        return True
+
+    async def close_all_orders(self) -> bool:
+        """Close every open position. Returns True if all closed successfully."""
+        open_trades = await self.get_open_trades()
+        if not open_trades:
+            logger.info("close_all_orders: no open trades.")
+            return True
+
+        results = await asyncio.gather(
+            *[self.close_order(t["ticket"]) for t in open_trades],
+            return_exceptions=True,
+        )
+        all_ok = all(r is True for r in results)
+        if not all_ok:
+            logger.warning("close_all_orders: some positions could not be closed.")
+        return all_ok
+
+    async def modify_order(self, ticket: int, sl: float, tp: float) -> bool:
+        """Modify the stop-loss and take-profit of an open position."""
+        if not MT5_AVAILABLE:
+            logger.info(f"modify_order mock: ticket={ticket} SL={sl} TP={tp}")
+            return True
+
+        loop = asyncio.get_event_loop()
+        positions = await loop.run_in_executor(
+            None, lambda: mt5.positions_get(ticket=ticket)
+        )
+        if not positions:
+            logger.warning(f"modify_order: no position with ticket {ticket}")
+            return False
+
+        pos = positions[0]
+        request = {
+            "action":   mt5.TRADE_ACTION_SLTP,
+            "symbol":   pos.symbol,
+            "position": ticket,
+            "sl":       float(sl),
+            "tp":       float(tp),
+        }
+        result = await loop.run_in_executor(None, lambda: mt5.order_send(request))
+        if result is None or result.retcode != mt5.TRADE_RETCODE_DONE:
+            logger.error(
+                f"modify_order ticket {ticket} failed: "
+                f"{result.comment if result else mt5.last_error()}"
+            )
+            return False
+
+        logger.info(f"Modified ticket={ticket} SL={sl} TP={tp}")
+        return True
+
+    # ------------------------------------------------------------------
+    # Position sizing
+    # ------------------------------------------------------------------
+
+    async def calculate_lot_size(
+        self, symbol: str, risk_percent: float, sl_points: int
+    ) -> float:
+        """
+        Calculate lot size using fixed-fractional risk management.
+
+        Args:
+            symbol:       Trading symbol.
+            risk_percent: Fraction of equity to risk (e.g. 0.02 = 2 %).
+            sl_points:    Stop-loss distance in MT5 points.
+
+        Returns:
+            Lot size clamped to symbol volume constraints, rounded to 2 dp.
+        """
+        account = await self.get_account_info()
+        equity = account["equity"]
+
+        if not MT5_AVAILABLE:
+            # Simple approximation for mock mode
+            risk_amount = equity * risk_percent
+            risk_per_lot = sl_points * 0.10  # assume $0.10 per point per lot
+            lot = max(0.01, min(100.0, round(risk_amount / risk_per_lot, 2)))
+            return lot
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, lambda: mt5.symbol_select(symbol, True))
+        sym_info = await loop.run_in_executor(None, lambda: mt5.symbol_info(symbol))
+        if sym_info is None:
+            raise RuntimeError(f"Cannot get symbol info for {symbol}")
+
+        risk_amount   = equity * risk_percent
+        tick_value    = sym_info.trade_tick_value
+        tick_size     = sym_info.trade_tick_size
+        point         = sym_info.point
+
+        if tick_size == 0 or point == 0 or sl_points == 0:
+            raise ValueError(f"Invalid symbol parameters: point={point} tick_size={tick_size}")
+
+        risk_per_lot = (sl_points * point / tick_size) * tick_value
+        if risk_per_lot <= 0:
+            raise ValueError(f"Computed risk_per_lot is non-positive: {risk_per_lot}")
+
+        raw_lot = risk_amount / risk_per_lot
+        step    = sym_info.volume_step
+        min_lot = sym_info.volume_min
+        max_lot = sym_info.volume_max
+
+        lot = round(raw_lot / step) * step
+        lot = max(min_lot, min(max_lot, lot))
+        return round(lot, 2)
+
+    # ------------------------------------------------------------------
+    # Market data
+    # ------------------------------------------------------------------
+
+    async def get_symbol_info(self, symbol: str) -> Dict:
+        """Return detailed symbol specifications."""
+        if not MT5_AVAILABLE:
+            return self._mock_symbol_info(symbol)
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, lambda: mt5.symbol_select(symbol, True))
+        info = await loop.run_in_executor(None, lambda: mt5.symbol_info(symbol))
+        if info is None:
+            raise RuntimeError(f"Symbol not found: {symbol}")
+        return {
+            "symbol":               info.name,
+            "description":          info.description,
+            "currency_base":        info.currency_base,
+            "currency_profit":      info.currency_profit,
+            "currency_margin":      info.currency_margin,
+            "digits":               info.digits,
+            "point":                info.point,
+            "spread":               info.spread,
+            "trade_contract_size":  info.trade_contract_size,
+            "volume_min":           info.volume_min,
+            "volume_max":           info.volume_max,
+            "volume_step":          info.volume_step,
+            "trade_tick_size":      info.trade_tick_size,
+            "trade_tick_value":     info.trade_tick_value,
+            "swap_long":            info.swap_long,
+            "swap_short":           info.swap_short,
+            "trade_mode":           info.trade_mode,
+            "filling_mode":         info.filling_mode,
+        }
+
+    async def get_current_price(self, symbol: str) -> Dict:
+        """Return current bid, ask, and spread for a symbol."""
+        if not MT5_AVAILABLE:
+            return {"symbol": symbol, "bid": 1.08498, "ask": 1.08502,
+                    "spread": 0.00004, "time": datetime.utcnow().isoformat(), "volume": 0}
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, lambda: mt5.symbol_select(symbol, True))
+        tick = await loop.run_in_executor(None, lambda: mt5.symbol_info_tick(symbol))
+        if tick is None:
+            raise RuntimeError(f"Cannot get tick for {symbol}: {mt5.last_error()}")
+        return {
+            "symbol": symbol,
+            "bid":    tick.bid,
+            "ask":    tick.ask,
+            "spread": round(tick.ask - tick.bid, 5),
+            "time":   datetime.fromtimestamp(tick.time).isoformat(),
+            "volume": tick.volume,
+        }
+
+    async def get_ohlcv(self, symbol: str, timeframe: str, count: int) -> List[Dict]:
+        """
+        Return the most recent *count* OHLCV bars.
+
+        Args:
+            symbol:    Trading symbol.
+            timeframe: Timeframe string: "M1", "M5", "H1", "D1", etc.
+            count:     Number of bars to fetch.
+
+        Returns:
+            List of dicts with keys: time, open, high, low, close, volume, spread.
+        """
+        tf = _TIMEFRAME_MAP.get(timeframe.upper())
+        if tf is None:
+            raise ValueError(
+                f"Unknown timeframe '{timeframe}'. Valid: {list(_TIMEFRAME_MAP.keys())}"
+            )
+
+        if not MT5_AVAILABLE:
+            return self._mock_ohlcv(symbol, count)
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, lambda: mt5.symbol_select(symbol, True))
+        rates = await loop.run_in_executor(
+            None, lambda: mt5.copy_rates_from_pos(symbol, tf, 0, count)
+        )
+        if rates is None or len(rates) == 0:
+            logger.warning(f"No OHLCV data for {symbol}/{timeframe}")
+            return []
+        return [
+            {
+                "time":   datetime.fromtimestamp(r["time"]).isoformat(),
+                "open":   float(r["open"]),
+                "high":   float(r["high"]),
+                "low":    float(r["low"]),
+                "close":  float(r["close"]),
+                "volume": int(r["tick_volume"]),
+                "spread": int(r["spread"]),
+            }
+            for r in rates
+        ]
+
+    async def get_active_charts(self) -> List[Dict]:
+        """Return all charts currently open in the MT5 terminal."""
+        if not MT5_AVAILABLE:
+            return [
+                {"chart_id": 1, "symbol": "EURUSD", "timeframe": "H1"},
+                {"chart_id": 2, "symbol": "GBPUSD", "timeframe": "M15"},
+            ]
+
+        loop = asyncio.get_event_loop()
+        charts: List[Dict] = []
+        chart_id = await loop.run_in_executor(None, mt5.chart_first)
+        while chart_id and chart_id > 0:
+            symbol = await loop.run_in_executor(
+                None, lambda cid=chart_id: mt5.chart_symbol_get(cid)
+            )
+            tf_id = await loop.run_in_executor(
+                None, lambda cid=chart_id: mt5.chart_period_get(cid)
+            )
+            tf_name = next(
+                (k for k, v in _TIMEFRAME_MAP.items() if v == tf_id), str(tf_id)
+            )
+            charts.append({"chart_id": chart_id, "symbol": symbol, "timeframe": tf_name})
+            chart_id = await loop.run_in_executor(
+                None, lambda cid=chart_id: mt5.chart_next(cid)
+            )
+        return charts
+
+    # ------------------------------------------------------------------
+    # Drawdown monitor
+    # ------------------------------------------------------------------
+
+    async def monitor_drawdown(self) -> None:
+        """
+        Background task: evaluates drawdown every 30 seconds.
+        Closes all positions when drawdown >= MAX_DRAWDOWN_PERCENT.
+        """
+        logger.info("Drawdown monitor started.")
+        while True:
+            try:
+                await asyncio.sleep(30)
+                if not await self.is_connected():
+                    continue
+
+                account = await self.get_account_info()
+                balance = account["balance"]
+                equity  = account["equity"]
+
+                if balance <= 0:
+                    continue
+
+                drawdown = (balance - equity) / balance
+                if drawdown >= self.MAX_DRAWDOWN_PERCENT:
+                    logger.warning(
+                        f"DRAWDOWN LIMIT HIT: {drawdown*100:.1f}% >= "
+                        f"{self.MAX_DRAWDOWN_PERCENT*100:.0f}%. Closing all positions."
+                    )
+                    await self.close_all_orders()
+
+            except asyncio.CancelledError:
+                logger.info("Drawdown monitor stopped.")
+                break
+            except Exception as exc:
+                logger.exception(f"Drawdown monitor error: {exc}")
+
+    # ------------------------------------------------------------------
+    # Mock helpers (non-Windows / no MT5)
+    # ------------------------------------------------------------------
+
     @staticmethod
-    def _mock_history() -> List[Dict[str, Any]]:
+    def _mock_account() -> Dict:
+        return {
+            "login": 12345678, "name": "JARVIS Demo", "server": "MetaQuotes-Demo",
+            "currency": "USD", "leverage": 100,
+            "balance": 10_000.00, "equity": 10_125.50, "margin": 250.00,
+            "free_margin": 9_875.50, "margin_level": 4050.20, "profit": 125.50,
+        }
+
+    @staticmethod
+    def _mock_positions() -> List[Dict]:
+        now = datetime.utcnow()
+        return [{
+            "ticket": 100001, "symbol": "EURUSD", "type": "BUY",
+            "volume": 0.10, "open_price": 1.08500, "current_price": 1.08650,
+            "sl": 1.08200, "tp": 1.09000, "profit": 15.00,
+            "swap": -0.50, "commission": -0.70,
+            "open_time": now.isoformat(), "comment": "JARVIS", "magic": 20240101,
+        }]
+
+    @staticmethod
+    def _mock_history() -> List[Dict]:
         records = []
         for i in range(10):
-            open_time = datetime.utcnow() - timedelta(days=i + 1, hours=3)
-            close_time = open_time + timedelta(hours=2)
-            profit = round((5 - i) * 12.5, 2)
+            t = datetime.utcnow() - timedelta(days=i + 1, hours=3)
             records.append({
-                "ticket": 99900 + i,
-                "order": 99900 + i,
-                "time": int(close_time.timestamp()),
-                "type": i % 2,
-                "entry": 1,
-                "magic": 12345,
-                "position_id": 99900 + i,
-                "reason": 0,
-                "volume": 0.10,
-                "price": 1.08500 + (i * 0.00050),
-                "commission": -0.70,
-                "swap": -0.30,
-                "profit": profit,
-                "symbol": "EURUSD",
-                "comment": "JARVIS AI",
+                "ticket": 99900 + i, "order": 99900 + i, "symbol": "EURUSD",
+                "type": i % 2, "entry": 1, "volume": 0.10,
+                "price": 1.08500 + i * 0.00050,
+                "profit": round((5 - i) * 12.5, 2),
+                "swap": -0.30, "commission": -0.70,
+                "time": t.isoformat(), "comment": "JARVIS", "magic": 20240101,
             })
         return records
 
     @staticmethod
-    def _mock_order_result(symbol: str, order_type: str, lot_size: float) -> Dict[str, Any]:
+    def _mock_order_result(symbol: str, order_type: str, lot: float) -> Dict:
         import random
-        ticket = random.randint(200000, 299999)
+        ticket = random.randint(200_000, 299_999)
         return {
-            "retcode": 10009,
-            "deal": ticket,
-            "order": ticket,
-            "volume": lot_size,
-            "price": 1.08500,
-            "bid": 1.08498,
-            "ask": 1.08502,
-            "comment": "Request executed",
-            "request_id": ticket,
-            "retcode_external": 0,
-            "symbol": symbol,
-            "type": 0 if order_type.upper() == "BUY" else 1,
+            "ticket": ticket, "symbol": symbol, "type": order_type,
+            "volume": lot, "price": 1.08502, "sl": 0.0, "tp": 0.0,
+            "status": "filled", "retcode": 10009,
+            "comment": "Mock request executed",
         }
 
     @staticmethod
-    def _mock_symbol_info(symbol: str) -> Dict[str, Any]:
+    def _mock_symbol_info(symbol: str) -> Dict:
         return {
-            "name": symbol,
-            "custom": False,
-            "chart_mode": 0,
-            "select": True,
-            "visible": True,
-            "session_deals": 0,
-            "session_buy_orders": 0,
-            "session_sell_orders": 0,
-            "volume": 0,
-            "volumehigh": 0,
-            "volumelow": 0,
-            "time": int(datetime.utcnow().timestamp()),
-            "digits": 5,
-            "spread": 10,
-            "spread_float": True,
-            "ticks_bookdepth": 10,
-            "trade_calc_mode": 0,
-            "trade_mode": 4,
-            "start_time": 0,
-            "expiration_time": 0,
-            "trade_stops_level": 0,
-            "trade_freeze_level": 0,
-            "trade_exemode": 2,
-            "swap_mode": 1,
-            "swap_rollover3days": 3,
-            "margin_hedged_use_leg": False,
-            "expiration_mode": 7,
-            "filling_mode": 1,
-            "order_mode": 127,
-            "order_gtc_mode": 0,
-            "option_mode": 0,
-            "option_right": 0,
-            "bid": 1.08498,
-            "bidhigh": 1.09500,
-            "bidlow": 1.07800,
-            "ask": 1.08502,
-            "askhigh": 1.09504,
-            "asklow": 1.07804,
-            "last": 0.0,
-            "lasthigh": 0.0,
-            "lastlow": 0.0,
-            "volume_real": 0.0,
-            "volumehigh_real": 0.0,
-            "volumelow_real": 0.0,
-            "option_strike": 0.0,
-            "point": 1e-05,
-            "trade_tick_value": 1.0,
-            "trade_tick_value_profit": 1.0,
-            "trade_tick_value_loss": 1.0,
-            "trade_tick_size": 1e-05,
-            "trade_contract_size": 100000.0,
-            "trade_accrued_interest": 0.0,
-            "trade_face_value": 0.0,
-            "trade_liquidity_rate": 0.0,
-            "volume_min": 0.01,
-            "volume_max": 500.0,
-            "volume_step": 0.01,
-            "volume_limit": 0.0,
-            "swap_long": -0.7,
-            "swap_short": 0.3,
-            "margin_initial": 0.0,
-            "margin_maintenance": 0.0,
-            "session_volume": 0.0,
-            "session_turnover": 0.0,
-            "session_interest": 0.0,
-            "session_buy_orders_volume": 0.0,
-            "session_sell_orders_volume": 0.0,
-            "session_open": 0.0,
-            "session_close": 0.0,
-            "session_aw": 0.0,
-            "session_price_settlement": 0.0,
-            "session_price_limit_min": 0.0,
-            "session_price_limit_max": 0.0,
-            "margin_hedged": 0.0,
-            "price_change": 0.0,
-            "price_volatility": 0.0,
-            "price_theoretical": 0.0,
-            "price_greeks_delta": 0.0,
-            "price_greeks_theta": 0.0,
-            "price_greeks_gamma": 0.0,
-            "price_greeks_vega": 0.0,
-            "price_greeks_rho": 0.0,
-            "price_greeks_omega": 0.0,
-            "price_sensitivity": 0.0,
-            "basis": "",
-            "category": "",
-            "currency_base": symbol[:3] if len(symbol) >= 3 else symbol,
-            "currency_profit": symbol[3:6] if len(symbol) >= 6 else "USD",
+            "symbol": symbol, "description": f"{symbol} Forex pair",
+            "currency_base": symbol[:3], "currency_profit": symbol[3:6] if len(symbol) >= 6 else "USD",
             "currency_margin": symbol[3:6] if len(symbol) >= 6 else "USD",
-            "bank": "",
-            "description": f"{symbol} Forex pair",
-            "exchange": "",
-            "formula": "",
-            "isin": "",
-            "page": "",
-            "path": f"Forex\\{symbol}",
+            "digits": 5, "point": 1e-5, "spread": 10,
+            "trade_contract_size": 100_000.0,
+            "volume_min": 0.01, "volume_max": 500.0, "volume_step": 0.01,
+            "trade_tick_size": 1e-5, "trade_tick_value": 1.0,
+            "swap_long": -0.7, "swap_short": 0.3, "trade_mode": 4, "filling_mode": 1,
         }
 
     @staticmethod
-    def _mock_price(symbol: str) -> Dict[str, Any]:
-        return {
-            "time": int(datetime.utcnow().timestamp()),
-            "bid": 1.08498,
-            "ask": 1.08502,
-            "last": 0.0,
-            "volume": 0,
-            "time_msc": int(datetime.utcnow().timestamp() * 1000),
-            "flags": 6,
-            "volume_real": 0.0,
-        }
+    def _mock_ohlcv(symbol: str, count: int) -> List[Dict]:
+        import random
+        bars = []
+        price = 1.08500
+        now = datetime.utcnow()
+        for i in range(count - 1, -1, -1):
+            o = price
+            h = o + random.uniform(0, 0.003)
+            l = o - random.uniform(0, 0.003)  # noqa: E741
+            c = random.uniform(l, h)
+            bars.append({
+                "time":   (now - timedelta(hours=i)).isoformat(),
+                "open":   round(o, 5), "high": round(h, 5),
+                "low":    round(l, 5), "close": round(c, 5),
+                "volume": random.randint(500, 5000), "spread": 10,
+            })
+            price = c
+        return bars
