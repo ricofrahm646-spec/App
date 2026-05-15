@@ -10,68 +10,71 @@ const JarvisBubble = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="mb-10 p-10 w-[500px] backdrop-blur-[50px] bg-slate-950/70 border border-white/5 rounded-[3rem] shadow-[0_0_120px_rgba(6,182,212,0.1)] text-white relative overflow-hidden"
+            initial={{ opacity: 0, backdropFilter: "blur(0px)", scale: 0.95 }}
+            animate={{ opacity: 1, backdropFilter: "blur(40px)", scale: 1 }}
+            exit={{ opacity: 0, backdropFilter: "blur(0px)", scale: 0.95 }}
+            className="mb-12 p-12 w-[550px] bg-slate-950/40 border border-white/5 rounded-[4rem] shadow-[0_0_150px_rgba(99,102,241,0.1)] text-white relative overflow-hidden"
           >
-            {/* Apex Chromatic Aberration Effect */}
-            <div className="absolute inset-0 border border-pink-500/5 translate-x-1 translate-y-1 rounded-[3rem] pointer-events-none" />
+            {/* Aether Aura Leuchten */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[120px] rounded-full" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/5 blur-[120px] rounded-full" />
 
             <div className="relative z-10">
-              <div className="flex justify-between items-start mb-8">
+              <div className="flex justify-between items-start mb-10">
                 <div>
-                  <h3 className="text-white font-black tracking-[0.6em] text-[10px] uppercase opacity-90">Omni-Reign Apex</h3>
-                  <div className="h-[1px] w-full bg-gradient-to-r from-cyan-500 to-pink-500 mt-2 opacity-50" />
+                  <h3 className="text-white font-black tracking-[0.8em] text-[12px] uppercase opacity-70">Aether Instance V5000</h3>
+                  <div className="h-[1px] w-24 bg-gradient-to-r from-cyan-500 via-indigo-500 to-pink-500 mt-3" />
                 </div>
-                <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10">
-                  <span className="text-[8px] font-bold text-cyan-400 animate-pulse">SINGULARITY_LIVE</span>
+                <div className="px-4 py-1.5 bg-white/2 rounded-full border border-white/5 shadow-inner">
+                  <span className="text-[9px] font-black text-indigo-300 tracking-widest">SOVEREIGN_CLASS</span>
                 </div>
               </div>
 
-              <div className="space-y-8">
-                <div className="p-5 bg-white/2 rounded-3xl border border-white/5 text-[11px] font-mono leading-relaxed relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className="text-white/30">$ apex --intuition --feel market</span>
-                  <p className="mt-3 text-cyan-100/90 font-medium">
-                    "Market heartbeat detected. RL-Policy optimization active. Trend reversal probability for XAUUSD increased to 99.2%. Proactive strike window opening in 40ms."
+              <div className="space-y-10">
+                <div className="p-6 bg-black/20 rounded-[2.5rem] border border-white/5 text-[12px] font-mono leading-relaxed group hover:border-white/10 transition-all shadow-2xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+                    <span className="text-white/20 tracking-tighter">$ aether --protocol engage --bio-feedback</span>
+                  </div>
+                  <p className="text-indigo-100/90 font-light italic">
+                    "Dark pool flow detected. Hidden iceberg order at $2042.10 verified via quantum scan. Bio-Sense confirms peak focus; deploying high-precision strike mission. Aether evolution synthesizing new Arbitrage-Node in background."
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-6">
                   {[
-                    { label: "RL-EFFICIENCY", val: "99.9%", color: "text-cyan-400" },
-                    { label: "OMNI-REVENUE", val: "+14.2K", color: "text-white" },
-                    { label: "INTENT-SYNC", val: "1.0", color: "text-pink-400" }
+                    { label: "QUANTUM-ACC", val: "99.99%", color: "text-cyan-300" },
+                    { label: "PASSIVE-YIELD", val: "+$124/D", color: "text-white" },
+                    { label: "EVOLUTION", val: "H-12", color: "text-pink-300" }
                   ].map((stat, i) => (
-                    <div key={i} className="p-4 bg-white/2 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
-                      <div className="text-[7px] text-white/20 font-black mb-1 tracking-widest">{stat.label}</div>
-                      <div className={`text-sm font-black ${stat.color}`}>{stat.val}</div>
+                    <div key={i} className="p-5 bg-white/2 rounded-3xl border border-white/5 text-center shadow-inner hover:scale-105 transition-transform cursor-default">
+                      <div className="text-[7px] text-white/10 font-black mb-2 tracking-[0.3em] uppercase">{stat.label}</div>
+                      <div className={`text-sm font-black tracking-tight ${stat.color}`}>{stat.val}</div>
                     </div>
                   ))}
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex justify-between text-[8px] font-bold tracking-widest text-white/30 uppercase">
-                    <span>Ghost-Programmer Status</span>
-                    <span className="text-cyan-500">Autonomous Synthesis</span>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-[8px] font-black tracking-[0.5em] text-white/20 uppercase">
+                    <span>Sovereignty Level</span>
+                    <span className="text-indigo-500">Infinite Computing</span>
                   </div>
-                  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-[2px] bg-white/5 rounded-full overflow-hidden">
                     <motion.div
-                      initial={{ x: "-100%" }}
-                      animate={{ x: "100%" }}
-                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                      className="h-full w-1/3 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+                      initial={{ width: 0 }}
+                      animate={{ width: "99.99%" }}
+                      transition={{ duration: 10, repeat: Infinity }}
+                      className="h-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-pink-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]"
                     />
                   </div>
                 </div>
 
                 <motion.button
-                  whileHover={{ scale: 1.01, boxShadow: "0 0 30px rgba(6,182,212,0.2)" }}
-                  whileTap={{ scale: 0.99 }}
-                  className="w-full py-5 bg-white text-black rounded-3xl text-[10px] font-black tracking-[0.4em] transition-all uppercase hover:bg-cyan-50"
+                  whileHover={{ scale: 1.02, letterSpacing: "0.6em", boxShadow: "0 0 50px rgba(99,102,241,0.2)" }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full py-6 bg-gradient-to-r from-slate-900 to-slate-950 text-indigo-300 border border-indigo-500/20 rounded-[2.5rem] text-[11px] font-black tracking-[0.5em] transition-all uppercase shadow-2xl"
                 >
-                  Execute Apex Mandate
+                  Authorize Aether Protocol
                 </motion.button>
               </div>
             </div>

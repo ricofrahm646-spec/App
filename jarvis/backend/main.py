@@ -6,19 +6,24 @@ import time
 import uvicorn
 import logging
 
-# J.A.R.V.I.S. V4000 Apex Core Imports
+# J.A.R.V.I.S. V5000 Aether Core Imports
 from jarvis.agents.manager import ManagerAgent
 from jarvis.agents.trading_swarm import TradingSwarm
 from jarvis.agents.gmail_architect import GmailArchitect
 from jarvis.agents.system_overlord import SystemOverlord
 from jarvis.agents.neural_oracle import NeuralOracle
 from jarvis.agents.neural_god import NeuralGod
+from jarvis.agents.quantum_liquidity import QuantumLiquidity
 from jarvis.core.nexus import NexusCore
 from jarvis.core.meta_engine import MetaEngine
 from jarvis.core.os_overlord import OSOverlord
 from jarvis.core.mobile_shadow import MobileShadow
+from jarvis.core.os_fusion import OSFusion
+from jarvis.core.aether import AetherProtocol
 from jarvis.vision.kinetic import KineticVision
+from jarvis.vision.bio_sense import BioSense
 from jarvis.factory.autonomous_dev import AutonomousDev
+from jarvis.factory.passive_income_swarm import PassiveIncomeSwarm
 from jarvis.ui.apex_interface import ApexHUD
 
 from jarvis.factory.task_executor import TaskExecutor
@@ -26,9 +31,9 @@ from jarvis.core.evolution import EvolutionCore
 
 # System Configuration
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("JARVIS_V4000_APEX")
+logger = logging.getLogger("JARVIS_V5000_AETHER")
 
-app = FastAPI(title="JARVIS V4000 Apex Singularity API")
+app = FastAPI(title="JARVIS V5000 Aether Singularity API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,6 +56,11 @@ manager.register_agent(KineticVision())
 manager.register_agent(OSOverlord())
 manager.register_agent(MobileShadow())
 manager.register_agent(AutonomousDev())
+manager.register_agent(QuantumLiquidity())
+manager.register_agent(BioSense())
+manager.register_agent(PassiveIncomeSwarm())
+manager.register_agent(OSFusion())
+manager.register_agent(AetherProtocol())
 
 executor = TaskExecutor()
 evolution = EvolutionCore()
@@ -71,15 +81,16 @@ async def mission_control_telemetry(request: Request, call_next):
 @app.get("/")
 def health_check():
     return {
-        "status": "V4000_APEX_SINGULARITY_ONLINE",
+        "status": "V5000_AETHER_SINGULARITY_ONLINE",
         "timestamp": time.time(),
-        "modules": ["NEURAL_GOD", "OS_OVERLORD", "MOBILE_SHADOW", "GHOST_PROGRAMMER", "APEX_HUD"]
+        "active_agents": len(manager.agents),
+        "sovereignty_level": "AETHER"
     }
 
 @app.post("/mission")
 async def handle_mission_request(request: MissionRequest):
     """
-    Central Mission Control Endpoint V4000 Apex.
+    Central Mission Control Endpoint V5000 Aether.
     """
     mission_id = time.time()
     logger.info(f"MISSION_RECEIVED: {request.mission} (ID: {mission_id})")
