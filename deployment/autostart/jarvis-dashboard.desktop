@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=JARVIS Dashboard
+Exec=xdg-open http://localhost:3000/dashboard
+X-GNOME-Autostart-enabled=true

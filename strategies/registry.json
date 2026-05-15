@@ -1,0 +1,7 @@
+[
+  {
+    "name": "demo_mean_reversion",
+    "module": "strategies.demo_mean_reversion",
+    "status": "disabled"
+  }
+]

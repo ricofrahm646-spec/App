@@ -1,0 +1,2 @@
+# Install on Windows hosts that run MetaTrader 5 terminal alongside the backend.
+MetaTrader5>=5.0.45

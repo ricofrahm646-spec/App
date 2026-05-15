@@ -1,0 +1,5 @@
+{
+  "max_concurrent_positions": 1,
+  "emergency_loss_pct_equity": 20.0,
+  "notes": "Mirrors backend RiskEngine defaults; tune per deployment."
+}

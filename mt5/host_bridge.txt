@@ -1,0 +1,4 @@
+Host bridge notes:
+- MetaTrader 5 terminal must run on Windows (or Wine) for Python MetaTrader5 bindings.
+- Point JARVIS MT5_PATH / credentials via environment variables on the host running the backend.
+- Linux containers cannot host MetaTrader natively; mount a Windows workspace or run the backend on the trading workstation.

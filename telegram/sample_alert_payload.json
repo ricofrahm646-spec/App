@@ -1,0 +1,5 @@
+{
+  "action": "buy",
+  "symbol": "EURUSD",
+  "secret": "replace-with-shared-secret"
+}

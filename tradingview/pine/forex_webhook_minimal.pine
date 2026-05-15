@@ -1,0 +1,12 @@
+//@version=5
+// Minimal Forex alert → JARVIS webhook (set your server URL + X-TV-SECRET header).
+indicator("JARVIS Forex webhook (minimal)", overlay=true)
+
+sym = syminfo.ticker
+isForex = str.contains(sym, "USD") or str.contains(sym, "EUR")
+
+longCond = ta.crossover(ta.sma(close, 14), ta.sma(close, 50)) and isForex
+
+if longCond
+    // TradingView alert message JSON must match your FastAPI verification (X-TV-SECRET header).
+    alert('{"action":"buy","symbol":"' + sym + '"}', alert.freq_once_per_bar)
