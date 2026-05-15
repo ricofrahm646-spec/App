@@ -1,0 +1,12 @@
+{
+  "strategy_id": "gold_scalper_v1",
+  "name": "Gold Scalper v1",
+  "style": "scalping",
+  "enabled": true,
+  "parameters": {
+    "symbol": "XAUUSD",
+    "timeframe": "M5",
+    "risk_percent": 1.0,
+    "max_spread_points": 35
+  }
+}

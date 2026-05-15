@@ -1,0 +1,14 @@
+//@version=5
+indicator("JARVIS Forex Signals", overlay=true)
+
+fast = ta.ema(close, 21)
+slow = ta.ema(close, 55)
+
+buySignal = ta.crossover(fast, slow)
+sellSignal = ta.crossunder(fast, slow)
+
+plotshape(buySignal, title="Buy", style=shape.labelup, text="BUY", color=color.new(color.green, 0))
+plotshape(sellSignal, title="Sell", style=shape.labeldown, text="SELL", color=color.new(color.red, 0))
+
+alertcondition(buySignal, title="JARVIS Buy Alert", message="BUY {{ticker}}")
+alertcondition(sellSignal, title="JARVIS Sell Alert", message="SELL {{ticker}}")
