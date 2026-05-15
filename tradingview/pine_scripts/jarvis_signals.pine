@@ -1,0 +1,65 @@
+// JARVIS AI Trading OS – Signal Overlay
+// Pine Script v5 – Forex pairs only
+//@version=5
+indicator("JARVIS Signals", overlay=true, max_labels_count=500, max_lines_count=500)
+
+// ─── Inputs ──────────────────────────────────────────────────────────
+fastLen   = input.int(9,   "Fast EMA",        minval=2)
+slowLen   = input.int(21,  "Slow EMA",        minval=2)
+rsiLen    = input.int(14,  "RSI Period",      minval=2)
+rsiOB     = input.int(70,  "RSI Overbought",  minval=50, maxval=95)
+rsiOS     = input.int(30,  "RSI Oversold",    minval=5,  maxval=50)
+atrLen    = input.int(14,  "ATR Period",      minval=1)
+atrSlMul  = input.float(1.5, "ATR SL Mult",   minval=0.1, step=0.1)
+atrTpMul  = input.float(3.0, "ATR TP Mult",   minval=0.1, step=0.1)
+useSessF  = input.bool(true, "Session Filter")
+sessStart = input.session("0200-1600", "Session (UTC)")
+
+// ─── Forex filter ────────────────────────────────────────────────────
+isForex = syminfo.type == "forex"
+
+// ─── Indicators ──────────────────────────────────────────────────────
+fastEMA = ta.ema(close, fastLen)
+slowEMA = ta.ema(close, slowLen)
+rsiVal  = ta.rsi(close, rsiLen)
+atrVal  = ta.atr(atrLen)
+
+// ─── Session filter ──────────────────────────────────────────────────
+inSession = useSessF ? not na(time(timeframe.period, sessStart)) : true
+
+// ─── Signal logic ────────────────────────────────────────────────────
+crossUp   = ta.crossover(fastEMA, slowEMA)
+crossDown = ta.crossunder(fastEMA, slowEMA)
+
+buySignal  = isForex and inSession and crossUp  and rsiVal < rsiOB
+sellSignal = isForex and inSession and crossDown and rsiVal > rsiOS
+
+// ─── SL / TP levels ─────────────────────────────────────────────────
+buySL  = buySignal  ? close - atrVal * atrSlMul : na
+buyTP  = buySignal  ? close + atrVal * atrTpMul : na
+sellSL = sellSignal ? close + atrVal * atrSlMul : na
+sellTP = sellSignal ? close - atrVal * atrTpMul : na
+
+// ─── Market phase background ─────────────────────────────────────────
+trendUp   = fastEMA > slowEMA
+trendDown = fastEMA < slowEMA
+bgColor   = trendUp ? color.new(color.green, 92) : trendDown ? color.new(color.red, 92) : na
+bgcolor(bgColor, title="Trend Phase")
+
+// ─── Plot EMAs ───────────────────────────────────────────────────────
+plot(fastEMA, "Fast EMA", color=color.new(color.blue, 0),  linewidth=1)
+plot(slowEMA, "Slow EMA", color=color.new(color.orange, 0), linewidth=1)
+
+// ─── Entry markers ──────────────────────────────────────────────────
+plotshape(buySignal,  title="Buy",  style=shape.labelup,   location=location.belowbar, color=color.new(color.green, 0), text="BUY",  textcolor=color.white, size=size.small)
+plotshape(sellSignal, title="Sell", style=shape.labeldown, location=location.abovebar, color=color.new(color.red, 0),   text="SELL", textcolor=color.white, size=size.small)
+
+// ─── SL / TP lines ──────────────────────────────────────────────────
+plot(buySL,  "Buy SL",  color=color.new(color.red, 40),   style=plot.style_cross, linewidth=2)
+plot(buyTP,  "Buy TP",  color=color.new(color.green, 40), style=plot.style_cross, linewidth=2)
+plot(sellSL, "Sell SL", color=color.new(color.red, 40),   style=plot.style_cross, linewidth=2)
+plot(sellTP, "Sell TP", color=color.new(color.green, 40), style=plot.style_cross, linewidth=2)
+
+// ─── Alert conditions ───────────────────────────────────────────────
+alertcondition(buySignal,  title="JARVIS Buy",  message='{"action":"buy","symbol":"{{ticker}}","price":{{close}},"sl":' + str.tostring(buySL) + ',"tp":' + str.tostring(buyTP) + ',"timeframe":"{{interval}}"}')
+alertcondition(sellSignal, title="JARVIS Sell", message='{"action":"sell","symbol":"{{ticker}}","price":{{close}},"sl":' + str.tostring(sellSL) + ',"tp":' + str.tostring(sellTP) + ',"timeframe":"{{interval}}"}')
