@@ -6,7 +6,11 @@ import time
 import uvicorn
 import logging
 
-# J.A.R.V.I.S. V6000 Nebula Swarm Core Imports
+# J.A.R.V.I.S. V9000 Aethelgard Omega Core Imports
+from jarvis.core.omega.kernel_v9000 import NeuralOverlordKernel
+from jarvis.core.omega.global_nexus import GlobalNexus
+from jarvis.core.omega.immortality import ImmortalityProtocol
+from jarvis.agents.trading.temporal.oracle_v9 import TemporalTradingKernelV9
 from jarvis.core.hive_mind import HiveMind
 from jarvis.agents.manager import ManagerAgent
 from jarvis.agents.trading_swarm import TradingSwarm
@@ -34,7 +38,7 @@ from jarvis.core.evolution import EvolutionCore
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("JARVIS_V5000_AETHER")
 
-app = FastAPI(title="JARVIS V6000 Nebula Hive API")
+app = FastAPI(title="JARVIS V9000 Aethelgard Omega API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,6 +49,11 @@ app.add_middleware(
 )
 
 # Initialize All Core Systems
+kernel = NeuralOverlordKernel()
+nexus = GlobalNexus()
+immortality = ImmortalityProtocol()
+temporal_trading = TemporalTradingKernelV9()
+
 hive = HiveMind()
 manager = ManagerAgent()
 manager.register_agent(TradingSwarm())
@@ -83,11 +92,13 @@ async def mission_control_telemetry(request: Request, call_next):
 @app.get("/")
 def health_check():
     return {
-        "status": "V6000_NEBULA_HIVE_ONLINE",
+        "status": "V9000_AETHELGARD_OMEGA_ONLINE",
         "timestamp": time.time(),
         "active_agents": len(manager.agents),
         "swarm_nodes": hive.get_telemetry()["active_nodes"],
-        "sovereignty_level": "NEBULA_SINGULARITY"
+        "throughput": kernel.calculate_temporal_throughput(),
+        "immortality": immortality.get_immortality_status(),
+        "sovereignty_level": "AETHELGARD_SINGULARITY"
     }
 
 @app.post("/mission")
