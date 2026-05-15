@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+sqlalchemy
+asyncpg
+redis
+cryptography
+httpx
+python-multipart
+numpy
+pandas
+backtrader
+vectorbt
+torch
+tensorflow
+xgboost
+optuna
