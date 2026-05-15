@@ -1,0 +1,70 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# JARVIS Trading OS — Frontend (Next.js)
+# Multi-stage build: deps → build → production
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Stage 1: Install dependencies ────────────────────────────────────────
+FROM node:20-alpine AS deps
+
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+COPY frontend/package.json frontend/package-lock.json* frontend/yarn.lock* frontend/pnpm-lock.yaml* ./
+
+RUN \
+    if [ -f pnpm-lock.yaml ]; then \
+        corepack enable pnpm && pnpm install --frozen-lockfile; \
+    elif [ -f yarn.lock ]; then \
+        yarn install --frozen-lockfile; \
+    elif [ -f package-lock.json ]; then \
+        npm ci; \
+    else \
+        npm install; \
+    fi
+
+# ── Stage 2: Build the application ──────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY frontend/ .
+
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NODE_ENV=production
+
+RUN npm run build
+
+# ── Stage 3: Production image ───────────────────────────────────────────
+FROM node:20-alpine AS production
+
+LABEL maintainer="JARVIS Team" \
+      description="JARVIS Trading OS — Frontend Dashboard" \
+      version="1.0.0"
+
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME="0.0.0.0"
+
+RUN addgroup --system --gid 1001 jarvis \
+    && adduser --system --uid 1001 --ingroup jarvis jarvis
+
+COPY --from=builder /app/public ./public
+
+RUN mkdir .next && chown jarvis:jarvis .next
+
+COPY --from=builder --chown=jarvis:jarvis /app/.next/standalone ./
+COPY --from=builder --chown=jarvis:jarvis /app/.next/static ./.next/static
+
+USER jarvis
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=20s \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+
+CMD ["node", "server.js"]

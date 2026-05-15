@@ -1,0 +1,126 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# JARVIS AI Trading Operating System — Git Ignore
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Python ───────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+*.whl
+.Python
+develop-eggs/
+.installed.cfg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python tools
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# ── Node.js / Frontend ──────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+.turbo/
+.vercel/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ── Environment & Secrets ───────────────────────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+deployment/.env
+
+# ── Docker ───────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── Logs ─────────────────────────────────────────────────────────────────
+*.log
+logs/
+backend/logs/
+
+# ── AI Models (large binary files) ──────────────────────────────────────
+models/*.pt
+models/*.pth
+models/*.onnx
+models/*.pkl
+models/*.h5
+models/*.tflite
+models/*.bin
+*.safetensors
+
+# ── Data ─────────────────────────────────────────────────────────────────
+data/
+*.csv
+*.parquet
+*.feather
+*.hdf5
+!data/.gitkeep
+
+# ── Database ─────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── IDE & Editors ────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+
+# ── OS Files ─────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── MQL5 compiled outputs ───────────────────────────────────────────────
+*.ex5
+*.ex4
+
+# ── Certificates ────────────────────────────────────────────────────────
+*.pem
+*.key
+*.crt
+*.csr
+
+# ── Misc ─────────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.temp
+.cache/

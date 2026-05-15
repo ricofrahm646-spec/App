@@ -1,0 +1,72 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# JARVIS Trading OS — Backend (FastAPI)
+# Multi-stage build: dependencies → production image
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Stage 1: Build dependencies ──────────────────────────────────────────
+FROM python:3.11-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        libpq-dev \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ── Stage 2: Production image ────────────────────────────────────────────
+FROM python:3.11-slim AS production
+
+LABEL maintainer="JARVIS Team" \
+      description="JARVIS Trading OS — Backend API" \
+      version="1.0.0"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpq5 \
+        curl \
+        wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 1001 jarvis \
+    && useradd --uid 1001 --gid jarvis --shell /bin/bash --create-home jarvis
+
+COPY --from=builder /install /usr/local
+
+WORKDIR /app
+
+COPY backend/ ./backend/
+COPY ai/ ./ai/
+COPY mt5/ ./mt5/
+COPY strategies/ ./strategies/
+COPY risk_management/ ./risk_management/
+COPY backtesting/ ./backtesting/
+COPY database/ ./database/
+COPY telegram/ ./telegram/
+COPY tradingview/ ./tradingview/
+COPY mql5/ ./mql5/
+COPY logging/ ./logging/
+
+RUN mkdir -p /app/logs /app/models /app/data \
+    && chown -R jarvis:jarvis /app
+
+USER jarvis
+
+ENV PYTHONPATH="/app:/app/backend" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=15s \
+    CMD python -c "import httpx; r = httpx.get('http://localhost:8000/health'); r.raise_for_status()" || exit 1
+
+CMD ["uvicorn", "app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "4", \
+     "--loop", "uvloop", \
+     "--http", "httptools", \
+     "--log-level", "info", \
+     "--access-log"]

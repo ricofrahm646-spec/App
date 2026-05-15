@@ -1,0 +1,80 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# JARVIS Trading OS — Docker Ignore
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+*.egg
+dist
+build
+.eggs
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.coverage
+htmlcov
+.tox
+.nox
+.venv
+venv
+env
+
+# Node / Frontend
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/.turbo
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+deployment/.env
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Data & models (mount as volumes instead)
+data/
+models/*.pt
+models/*.pth
+models/*.onnx
+models/*.pkl
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation build artifacts
+docs/_build
+site/
+
+# Tests
+tests/
+test/
+*.test.*
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.circleci
