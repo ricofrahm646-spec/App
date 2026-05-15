@@ -146,7 +146,7 @@ async def place_order(
         result = await mt5.place_order(
             symbol=req.symbol,
             order_type=req.order_type,
-            lot_size=req.lot_size,
+            lot=req.lot_size,
             sl=req.stop_loss,
             tp=req.take_profit,
             comment=req.comment or "JARVIS",

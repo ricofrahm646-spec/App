@@ -53,24 +53,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as exc:
             logger.warning("Async database init skipped (non-critical): %s", exc)
 
-    # Auto-connect MT5
+    # Auto-connect MT5 using the singleton service instance
     if settings.MT5_LOGIN and settings.MT5_PASSWORD:
-        from app.services.mt5_service import MT5Service
-        result = MT5Service.connect(
-            login=settings.MT5_LOGIN,
-            password=settings.MT5_PASSWORD,
-            server=settings.MT5_SERVER,
-            path=settings.MT5_PATH,
-        )
-        logger.info("MT5 auto-connect: %s", result.get("message"))
+        from app.api.deps import get_mt5
+        _mt5_instance = get_mt5()
+        try:
+            connected = await _mt5_instance.connect(
+                login=settings.MT5_LOGIN,
+                password=settings.MT5_PASSWORD,
+                server=settings.MT5_SERVER or "MetaQuotes-Demo",
+            )
+            logger.info("MT5 auto-connect: %s", "success" if connected else "failed")
+        except Exception as exc:
+            logger.warning("MT5 auto-connect failed (non-critical): %s", exc)
 
     logger.info("JARVIS backend ready.")
     yield
 
     # Graceful shutdown
     logger.info("Shutting down JARVIS backend…")
-    from app.services.mt5_service import MT5Service
-    MT5Service.disconnect()
+    try:
+        from app.api.deps import get_mt5
+        await get_mt5().disconnect()
+    except Exception:
+        pass
 
     if _ASYNC_SETTINGS_AVAILABLE:
         try:
@@ -194,22 +200,26 @@ def root() -> dict:
 
 @app.get("/health", tags=["system"])
 def health() -> dict:
-    from app.services.mt5_service import MT5Service
+    from app.api.deps import get_mt5
+    mt5_instance = get_mt5()
     return {
         "status": "healthy",
-        "mt5_connected": MT5Service.is_connected(),
+        "mt5_connected": mt5_instance._connected,
         "version": settings.APP_VERSION,
     }
 
 
 @app.get("/api/status", tags=["system"])
 def api_status() -> dict:
-    from app.services.mt5_service import MT5Service
-    mt5 = MT5Service.get_status()
+    from app.api.deps import get_mt5
+    mt5_instance = get_mt5()
     return {
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "mt5": mt5,
+        "mt5": {
+            "connected": mt5_instance._connected,
+            "available": hasattr(mt5_instance, "_connected"),
+        },
         "ai_providers": {
             "openai": bool(settings.OPENAI_API_KEY),
             "anthropic": bool(settings.ANTHROPIC_API_KEY),

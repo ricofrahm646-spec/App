@@ -110,7 +110,7 @@ async def receive_webhook(
                 trade_result = await mt5.place_order(
                     symbol=signal["symbol"],
                     order_type=action,
-                    lot_size=signal.get("volume") or 0.01,
+                    lot=signal.get("volume") or 0.01,
                     sl=signal.get("sl", 0.0),
                     tp=signal.get("tp", 0.0),
                     comment=f"TV:{signal.get('strategy', 'Alert')}",
