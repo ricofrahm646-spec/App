@@ -1,30 +1,20 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List, Optional
-import uvicorn
+from fastapi import FastAPI
+from jarvis.backend.routers import bots, strategies, risk, telemetry
+from jarvis.backend.routers.security import SecurityMiddleware
 
-app = FastAPI(title="JARVIS AI Trading OS - Backend")
+app = FastAPI(title="JARVIS V9000 Aethelgard Omega")
 
-class TradeSignal(BaseModel):
-    symbol: str
-    direction: str
-    price: float
-    sl: float
-    tp: float
-    strategy: str
+app.add_middleware(SecurityMiddleware)
+
+app.include_router(bots.router)
+app.include_router(strategies.router)
+app.include_router(risk.router)
+app.include_router(telemetry.router)
 
 @app.get("/")
 async def root():
-    return {"status": "online", "system": "JARVIS V1.0", "message": "Neural God Aethelgard Protocol Active"}
-
-@app.get("/health")
-async def health():
-    return {"status": "V9000_AETHELGARD_OMEGA_ONLINE"}
-
-@app.post("/signals/broadcast")
-async def broadcast_signal(signal: TradeSignal):
-    # Logic to send signal to Telegram and MT5
-    return {"message": "Signal broadcasted", "data": signal}
+    return {"status": "V9000_AETHELGARD_OMEGA_ONLINE", "message": "Neural God Protocol Active"}
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

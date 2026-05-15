@@ -20,7 +20,7 @@ def test_ai_bot_creation():
     chat = AIChatSystem()
     resp = chat.process_command("Baue einen neuen Gold-Scalping-Bot")
     assert resp["status"] == "success"
-    assert "NeuralBot_Gold-scalping-bot" in resp["message"]
+    assert "NeuralBot_GOLD" in resp["message"]
     assert os.path.exists(resp["path"])
 
 def test_mql5_generator():

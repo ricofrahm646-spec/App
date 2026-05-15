@@ -31,7 +31,7 @@ function track_signal(record::SignalRecord, file_path="OMEGA-TRADER/data/trade_h
     )
 
     if isfile(file_path)
-        CSV.write(file_path, df, append=true)
+        CSV.write(file_path, df, append=true, header=false)
     else
         CSV.write(file_path, df)
     end
