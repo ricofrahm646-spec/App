@@ -1,0 +1,17 @@
+strategies:
+  - name: gold_scalping_core
+    category: scalping
+    status: active
+    priority: 0.8
+  - name: ict_liquidity_sweep
+    category: ict
+    status: active
+    priority: 0.76
+  - name: smart_money_orderblocks
+    category: smart_money
+    status: candidate
+    priority: 0.61
+  - name: trend_following_fx
+    category: trend_following
+    status: candidate
+    priority: 0.58

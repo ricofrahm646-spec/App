@@ -1,0 +1,13 @@
+//@version=5
+indicator("JARVIS Signal Overlay", overlay=true)
+
+fast = ta.ema(close, 20)
+slow = ta.ema(close, 50)
+buySignal = ta.crossover(fast, slow)
+sellSignal = ta.crossunder(fast, slow)
+
+plotshape(buySignal, title="BUY", style=shape.labelup, text="BUY", color=color.new(color.green, 0))
+plotshape(sellSignal, title="SELL", style=shape.labeldown, text="SELL", color=color.new(color.red, 0))
+
+plot(fast, "EMA 20", color=color.aqua)
+plot(slow, "EMA 50", color=color.orange)

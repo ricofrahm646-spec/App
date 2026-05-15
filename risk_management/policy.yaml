@@ -1,0 +1,12 @@
+max_concurrent_trades: 1
+allow_buy_and_sell_same_time: false
+force_close_loss_pct: 20
+max_risk_per_trade_pct: 2
+slippage_guard_enabled: true
+margin_minimum_level_pct: 100
+position_sizing:
+  mode: dynamic
+  base_risk_pct: 1
+drawdown_control:
+  warning_level_pct: 10
+  emergency_stop_level_pct: 20
