@@ -1,9 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import NebulaSwarm from './NebulaSwarm';
 
 const NeuralGlowOrb = () => {
   return (
     <div className="relative flex items-center justify-center w-84 h-84">
+      {/* Nebula Swarm Node Field */}
+      <NebulaSwarm />
+
       {/* Liquid Metal Aether Field */}
       <motion.div
         animate={{
@@ -79,8 +83,8 @@ const NeuralGlowOrb = () => {
         />
 
         <div className="flex flex-col items-center justify-center z-10 text-center select-none">
-          <span className="text-[14px] font-black tracking-[0.8em] text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.6)] ml-2">V5000</span>
-          <span className="text-[6px] font-mono text-cyan-300 mt-2 opacity-50 tracking-[0.4em] uppercase">Aether Instance</span>
+          <span className="text-[14px] font-black tracking-[0.8em] text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.6)] ml-2">V6000</span>
+          <span className="text-[6px] font-mono text-cyan-300 mt-2 opacity-50 tracking-[0.4em] uppercase">Nebula Hive</span>
         </div>
       </motion.div>
 

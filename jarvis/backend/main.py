@@ -6,7 +6,8 @@ import time
 import uvicorn
 import logging
 
-# J.A.R.V.I.S. V5000 Aether Core Imports
+# J.A.R.V.I.S. V6000 Nebula Swarm Core Imports
+from jarvis.core.hive_mind import HiveMind
 from jarvis.agents.manager import ManagerAgent
 from jarvis.agents.trading_swarm import TradingSwarm
 from jarvis.agents.gmail_architect import GmailArchitect
@@ -33,7 +34,7 @@ from jarvis.core.evolution import EvolutionCore
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("JARVIS_V5000_AETHER")
 
-app = FastAPI(title="JARVIS V5000 Aether Singularity API")
+app = FastAPI(title="JARVIS V6000 Nebula Hive API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,6 +45,7 @@ app.add_middleware(
 )
 
 # Initialize All Core Systems
+hive = HiveMind()
 manager = ManagerAgent()
 manager.register_agent(TradingSwarm())
 manager.register_agent(GmailArchitect())
@@ -81,26 +83,34 @@ async def mission_control_telemetry(request: Request, call_next):
 @app.get("/")
 def health_check():
     return {
-        "status": "V5000_AETHER_SINGULARITY_ONLINE",
+        "status": "V6000_NEBULA_HIVE_ONLINE",
         "timestamp": time.time(),
         "active_agents": len(manager.agents),
-        "sovereignty_level": "AETHER"
+        "swarm_nodes": hive.get_telemetry()["active_nodes"],
+        "sovereignty_level": "NEBULA_SINGULARITY"
     }
 
 @app.post("/mission")
 async def handle_mission_request(request: MissionRequest):
     """
-    Central Mission Control Endpoint V5000 Aether.
+    Central Mission Control Endpoint V6000 Nebula Hive.
     """
     mission_id = time.time()
     logger.info(f"MISSION_RECEIVED: {request.mission} (ID: {mission_id})")
 
     try:
-        response = await manager.handle_request(request.mission)
-        return response
+        # Route through Hive Mind for swarm orchestration
+        hive_response = await hive.process_missions(request.mission)
+        manager_response = await manager.handle_request(request.mission)
+
+        return {
+            "manager_output": manager_response,
+            "hive_status": hive_response,
+            "telemetry": hive.get_telemetry()
+        }
     except Exception as e:
         logger.error(f"MISSION_FAILURE: {str(e)}")
-        raise HTTPException(status_code=500, detail="MISSION_CONTROL_INTERRUPTED")
+        raise HTTPException(status_code=500, detail="NEBULA_HIVE_INTERRUPTED")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

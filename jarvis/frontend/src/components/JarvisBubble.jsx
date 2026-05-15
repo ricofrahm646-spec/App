@@ -22,11 +22,11 @@ const JarvisBubble = () => {
             <div className="relative z-10">
               <div className="flex justify-between items-start mb-10">
                 <div>
-                  <h3 className="text-white font-black tracking-[0.8em] text-[12px] uppercase opacity-70">Aether Instance V5000</h3>
+                  <h3 className="text-white font-black tracking-[0.8em] text-[12px] uppercase opacity-70">Nebula Hive V6000</h3>
                   <div className="h-[1px] w-24 bg-gradient-to-r from-cyan-500 via-indigo-500 to-pink-500 mt-3" />
                 </div>
                 <div className="px-4 py-1.5 bg-white/2 rounded-full border border-white/5 shadow-inner">
-                  <span className="text-[9px] font-black text-indigo-300 tracking-widest">SOVEREIGN_CLASS</span>
+                  <span className="text-[9px] font-black text-indigo-300 tracking-widest">NEBULA_SINGULARITY</span>
                 </div>
               </div>
 
@@ -34,10 +34,10 @@ const JarvisBubble = () => {
                 <div className="p-6 bg-black/20 rounded-[2.5rem] border border-white/5 text-[12px] font-mono leading-relaxed group hover:border-white/10 transition-all shadow-2xl">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-                    <span className="text-white/20 tracking-tighter">$ aether --protocol engage --bio-feedback</span>
+                    <span className="text-white/20 tracking-tighter">$ nebula --hive-mind --sync-swarm --precision 99.9999%</span>
                   </div>
                   <p className="text-indigo-100/90 font-light italic">
-                    "Dark pool flow detected. Hidden iceberg order at $2042.10 verified via quantum scan. Bio-Sense confirms peak focus; deploying high-precision strike mission. Aether evolution synthesizing new Arbitrage-Node in background."
+                    "Nebula Swarm synchronized. 512 nodes active. Liquidity Sniper detected dark pool accumulation. Arbitrage Ghost exploiting cross-broker spreads. Recursive Builder synthesizing sub-agent for institutional front-running. Sir, the digital reality is under our control."
                   </p>
                 </div>
 
@@ -74,7 +74,7 @@ const JarvisBubble = () => {
                   whileTap={{ scale: 0.98 }}
                   className="w-full py-6 bg-gradient-to-r from-slate-900 to-slate-950 text-indigo-300 border border-indigo-500/20 rounded-[2.5rem] text-[11px] font-black tracking-[0.5em] transition-all uppercase shadow-2xl"
                 >
-                  Authorize Aether Protocol
+                  EXECUTE NEBULA SINGULARITY
                 </motion.button>
               </div>
             </div>
