@@ -4,7 +4,11 @@ import subprocess
 import os
 from typing import Dict, Any
 try:
-    import pyautogui
+    import os
+    if os.environ.get('DISPLAY') or os.name == 'nt':
+        import pyautogui
+    else:
+        pyautogui = None
 except ImportError:
     pyautogui = None
 

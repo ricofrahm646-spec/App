@@ -1,4 +1,7 @@
-import yfinance as yf
+try:
+    import yfinance as yf
+except ImportError:
+    yf = None
 import pandas as pd
 import numpy as np
 import asyncio
@@ -28,6 +31,9 @@ class TradingSwarm(BaseAgent):
         """
         Downloads and cleans market data for high-precision analysis.
         """
+        if not yf:
+            logger.error("TRADING_ERROR: yfinance module not found. Run 'pip install yfinance'.")
+            return None
         try:
             logger.info(f"RETRIEVING_DATA: {ticker}")
             data = yf.download(ticker, period=period, interval=interval, progress=False)
