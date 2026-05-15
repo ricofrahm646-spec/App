@@ -19,8 +19,11 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "autoprefixer": "latest",
-    "postcss": "latest",
+    "postcss": "8.5.14",
     "tailwindcss": "latest",
     "typescript": "latest"
+  },
+  "overrides": {
+    "postcss": "8.5.14"
   }
 }
