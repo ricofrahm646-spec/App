@@ -51,8 +51,11 @@ function run_system(market_data, account_balance, risk_pct, sl_pips)
 
     # 4. Performance Audit (if signal exists)
     if signal != :none
-        tp_price = signal == :buy || signal == :bullish_ob ? closes[end] + (sl_pips * 0.0001 * 2) : closes[end] - (sl_pips * 0.0001 * 2)
-        sl_price = signal == :buy || signal == :bullish_ob ? closes[end] - (sl_pips * 0.0001) : closes[end] + (sl_pips * 0.0001)
+        # Determine pip multiplier (0.01 for JPY/Gold, 0.0001 for others - simplified)
+        pip_mult = closes[end] > 500 ? 0.01 : 0.0001
+
+        tp_price = signal == :buy || signal == :bullish_ob ? closes[end] + (sl_pips * pip_mult * 2) : closes[end] - (sl_pips * pip_mult * 2)
+        sl_price = signal == :buy || signal == :bullish_ob ? closes[end] - (sl_pips * pip_mult) : closes[end] + (sl_pips * pip_mult)
 
         r_multiple = PerformanceAudit.calculate_r_multiple(closes[end], sl_price, tp_price)
 
