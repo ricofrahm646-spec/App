@@ -2,6 +2,8 @@ fastapi
 uvicorn
 pydantic
 yfinance
+pyautogui
+pynput
 pandas
 numpy
 pybind11
