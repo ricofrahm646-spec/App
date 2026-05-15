@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=JARVIS Dashboard
+Comment=Open the JARVIS trading dashboard on login
+Exec=xdg-open http://localhost:3000
+Icon=utilities-terminal
+Terminal=false
+Categories=Finance;Development;

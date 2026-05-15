@@ -1,0 +1,74 @@
+name: jarvis
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jarvis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-jarvis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jarvis}
+      POSTGRES_DB: ${POSTGRES_DB:-jarvis}
+    ports:
+      - "5432:5432"
+    volumes:
+      - jarvis-pg:/var/lib/postgresql/data
+      - ../database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jarvis}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: jarvis-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.backend
+    container_name: jarvis-backend
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-jarvis}:${POSTGRES_PASSWORD:-jarvis}@postgres:5432/${POSTGRES_DB:-jarvis}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../logs:/app/logs
+      - ../mql5/build:/app/mql5/build
+      - ../mql5/installed:/app/mql5/installed
+      - ../strategies/generated:/app/strategies/generated
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.frontend
+    container_name: jarvis-frontend
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000/api/ws
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  jarvis-pg:

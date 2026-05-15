@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+build/
+.npm
+.pnpm-debug.log
+
+# Env / secrets
+.env
+.env.local
+*.key
+secrets/
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Data
+data/*.csv
+data/*.parquet
+data/*.feather
+logs/
+*.log
+*.sqlite
+*.db
+
+# MQL5 build artefacts
+mql5/build/*.mq5
+mql5/installed/*.mq5
+*.ex5
+
+# Auto-generated strategies (the __init__.py is kept)
+strategies/generated/*.py
+!strategies/generated/__init__.py
