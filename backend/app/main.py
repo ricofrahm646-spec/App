@@ -2,277 +2,216 @@
 
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 
-from app.config import settings
-from app.core.database import close_db, init_db
-from app.core.logging import logger
-from app.core.websocket import ws_manager
+# ── Configuration ─────────────────────────────────────────────────────────────
+# Primary async config (PostgreSQL system)
+try:
+    from app.config import settings as async_settings
+    _ASYNC_SETTINGS_AVAILABLE = True
+except Exception:
+    async_settings = None  # type: ignore
+    _ASYNC_SETTINGS_AVAILABLE = False
 
-# ── Routers ────────────────────────────────────────────────────────────────────
-from app.api.routes.auth import router as auth_router
-from app.api.routes.trades import router as trades_router
-from app.api.routes.strategies import router as strategies_router
-from app.api.routes.market import router as market_router
-from app.api.routes.settings import router as settings_router
-from app.api.routes.webhook import router as webhook_router
+# JARVIS sync config (SQLite system)
+from app.core.config import settings
+
+logging.basicConfig(
+    level=logging.DEBUG if settings.DEBUG else logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
-# ── Lifespan ───────────────────────────────────────────────────────────────────
+# ── Lifespan ──────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application startup and shutdown logic."""
-    logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
-    logger.info(f"Environment: DEBUG={settings.DEBUG}  LOG_LEVEL={settings.LOG_LEVEL}")
+    """Application startup and shutdown lifecycle."""
+    logger.info("Starting %s v%s", settings.APP_NAME, settings.APP_VERSION)
 
-    # Initialise database tables
-    try:
-        await init_db()
-    except Exception as exc:
-        logger.error(f"Database initialisation failed: {exc}")
-        raise
+    # Initialise JARVIS sync SQLite database
+    from app.database import init_db
+    init_db()
+    logger.info("JARVIS SQLite database initialised")
 
-    logger.info("JARVIS backend is ready to accept connections.")
+    # Optionally initialise async PostgreSQL database
+    if _ASYNC_SETTINGS_AVAILABLE:
+        try:
+            from app.core.database import init_db as async_init_db
+            await async_init_db()
+            logger.info("Async PostgreSQL database initialised")
+        except Exception as exc:
+            logger.warning("Async database init skipped (non-critical): %s", exc)
+
+    # Auto-connect MT5
+    if settings.MT5_LOGIN and settings.MT5_PASSWORD:
+        from app.services.mt5_service import MT5Service
+        result = MT5Service.connect(
+            login=settings.MT5_LOGIN,
+            password=settings.MT5_PASSWORD,
+            server=settings.MT5_SERVER,
+            path=settings.MT5_PATH,
+        )
+        logger.info("MT5 auto-connect: %s", result.get("message"))
+
+    logger.info("JARVIS backend ready.")
     yield
 
     # Graceful shutdown
     logger.info("Shutting down JARVIS backend…")
-    await close_db()
+    from app.services.mt5_service import MT5Service
+    MT5Service.disconnect()
+
+    if _ASYNC_SETTINGS_AVAILABLE:
+        try:
+            from app.core.database import close_db
+            await close_db()
+        except Exception:
+            pass
+
     logger.info("Shutdown complete.")
 
 
 # ── Application factory ────────────────────────────────────────────────────────
 
-def create_application() -> FastAPI:
-    app = FastAPI(
-        title=settings.APP_NAME,
-        version=settings.APP_VERSION,
-        description=(
-            "JARVIS – Professional AI Trading OS backend API. "
-            "Provides REST endpoints for trade management, strategy control, "
-            "market data, AI analysis, and real-time WebSocket feeds."
-        ),
-        docs_url="/api/docs",
-        redoc_url="/api/redoc",
-        openapi_url="/api/openapi.json",
-        lifespan=lifespan,
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description=(
+        "JARVIS AI Trading OS – Production-ready REST + WebSocket API for "
+        "MetaTrader 5 automation, AI-powered strategy generation, backtesting, "
+        "real-time risk management, and multi-channel notifications."
+    ),
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
+
+# ── Middleware ─────────────────────────────────────────────────────────────────
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next: Any) -> Any:
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    start = time.perf_counter()
+    response = await call_next(request)
+    elapsed = round((time.perf_counter() - start) * 1000, 2)
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Response-Time"] = f"{elapsed}ms"
+    return response
+
+
+# ── Exception handlers ─────────────────────────────────────────────────────────
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(exc.body) if hasattr(exc, "body") else None},
     )
 
-    # ── Middleware ─────────────────────────────────────────────────────────────
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled exception on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "type": type(exc).__name__},
     )
 
-    @app.middleware("http")
-    async def request_id_and_timing(
-        request: Request, call_next: Any
-    ) -> Any:
-        """Attach a unique request ID and log request duration."""
-        request_id = str(uuid.uuid4())
-        request.state.request_id = request_id
-        start = time.perf_counter()
-        response = await call_next(request)
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        response.headers["X-Request-ID"] = request_id
-        response.headers["X-Response-Time"] = f"{elapsed_ms:.2f}ms"
-        logger.debug(
-            f"{request.method} {request.url.path} "
-            f"status={response.status_code} "
-            f"duration={elapsed_ms:.2f}ms "
-            f"request_id={request_id}"
-        )
-        return response
 
-    # ── Exception handlers ─────────────────────────────────────────────────────
+# ── JARVIS Trading OS Routers ─────────────────────────────────────────────────
 
-    @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(
-        request: Request, exc: RequestValidationError
-    ) -> JSONResponse:
-        logger.warning(f"Validation error on {request.url.path}: {exc.errors()}")
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "detail": exc.errors(),
-                "body": exc.body,
-                "request_id": getattr(request.state, "request_id", None),
-            },
-        )
+from app.api.routes.trading import router as trading_router
+from app.api.routes.ai import router as ai_router
+from app.api.routes.strategies import router as strategies_router
+from app.api.routes.backtesting import router as backtesting_router
+from app.api.routes.dashboard import router as dashboard_router
+from app.api.routes.telegram import router as telegram_router
+from app.api.routes.tradingview import router as tradingview_router
+from app.api.routes.mql5 import router as mql5_router
+from app.api.routes.risk import router as risk_router
 
-    @app.exception_handler(Exception)
-    async def generic_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
-        logger.exception(
-            f"Unhandled exception on {request.method} {request.url.path}: {exc}"
-        )
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "detail": "An internal server error occurred.",
-                "request_id": getattr(request.state, "request_id", None),
-            },
-        )
+app.include_router(trading_router)
+app.include_router(ai_router)
+app.include_router(strategies_router)
+app.include_router(backtesting_router)
+app.include_router(dashboard_router)
+app.include_router(telegram_router)
+app.include_router(tradingview_router)
+app.include_router(mql5_router)
+app.include_router(risk_router)
 
-    # ── Routers ────────────────────────────────────────────────────────────────
+# ── Legacy async routes (auth, trades, market) ────────────────────────────────
 
-    API_PREFIX = "/api/v1"
-
-    app.include_router(auth_router, prefix=API_PREFIX)
-    app.include_router(trades_router, prefix=API_PREFIX)
-    app.include_router(strategies_router, prefix=API_PREFIX)
-    app.include_router(market_router, prefix=API_PREFIX)
-    app.include_router(settings_router, prefix=API_PREFIX)
-    app.include_router(webhook_router, prefix=API_PREFIX)
-
-    # ── WebSocket endpoint ─────────────────────────────────────────────────────
-
-    @app.websocket("/ws")
-    async def websocket_endpoint(websocket: WebSocket) -> None:
-        """Primary WebSocket endpoint for real-time market and trade events.
-
-        Clients may optionally pass `?token=<jwt>` as a query parameter to
-        bind the connection to an authenticated user.
-        """
-        client_id = str(uuid.uuid4())
-        user_id: int | None = None
-
-        # Optional JWT authentication via query param
-        token = websocket.query_params.get("token")
-        if token:
-            try:
-                from app.core.security import decode_access_token
-                token_data = decode_access_token(token)
-                user_id = token_data.user_id
-            except Exception:
-                # Connection is still accepted but unauthenticated
-                logger.warning(f"WebSocket {client_id}: invalid token provided")
-
-        await ws_manager.connect(websocket, client_id, user_id=user_id)
-        logger.info(
-            f"WebSocket client connected: id={client_id} user_id={user_id} "
-            f"total_connections={ws_manager.active_connections}"
-        )
-
-        try:
-            while True:
-                raw_message = await websocket.receive_text()
-                await ws_manager.handle_client_message(client_id, raw_message)
-        except WebSocketDisconnect:
-            pass
-        except Exception as exc:
-            logger.error(f"WebSocket {client_id} error: {exc}")
-        finally:
-            await ws_manager.disconnect(client_id)
-            logger.info(
-                f"WebSocket client disconnected: id={client_id} "
-                f"total_connections={ws_manager.active_connections}"
-            )
-
-    @app.websocket("/ws/{client_id}")
-    async def websocket_endpoint_with_id(
-        websocket: WebSocket, client_id: str
-    ) -> None:
-        """WebSocket endpoint that accepts a client-provided ID."""
-        user_id: int | None = None
-        token = websocket.query_params.get("token")
-        if token:
-            try:
-                from app.core.security import decode_access_token
-                token_data = decode_access_token(token)
-                user_id = token_data.user_id
-            except Exception:
-                logger.warning(f"WebSocket {client_id}: invalid token")
-
-        await ws_manager.connect(websocket, client_id, user_id=user_id)
-        try:
-            while True:
-                raw_message = await websocket.receive_text()
-                await ws_manager.handle_client_message(client_id, raw_message)
-        except WebSocketDisconnect:
-            pass
-        except Exception as exc:
-            logger.error(f"WebSocket {client_id} error: {exc}")
-        finally:
-            await ws_manager.disconnect(client_id)
-
-    # ── Static files ───────────────────────────────────────────────────────────
-
-    import os
-
-    static_dir = os.path.join(os.path.dirname(__file__), "static")
-    if os.path.isdir(static_dir):
-        app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-    # ── Health & status endpoints ──────────────────────────────────────────────
-
-    @app.get("/health", tags=["System"], summary="Basic liveness probe")
-    async def health_check() -> dict[str, str]:
-        return {"status": "ok", "service": settings.APP_NAME, "version": settings.APP_VERSION}
-
-    @app.get("/api/v1/status", tags=["System"], summary="Detailed system status")
-    async def system_status() -> dict[str, Any]:
-        from app.core.database import engine
-
-        db_ok = False
-        try:
-            async with engine.connect() as conn:
-                from sqlalchemy import text
-                await conn.execute(text("SELECT 1"))
-            db_ok = True
-        except Exception as exc:
-            logger.error(f"DB health check failed: {exc}")
-
-        return {
-            "service": settings.APP_NAME,
-            "version": settings.APP_VERSION,
-            "status": "ok" if db_ok else "degraded",
-            "components": {
-                "database": "ok" if db_ok else "error",
-                "websocket": {
-                    "active_connections": ws_manager.active_connections,
-                },
-            },
-            "debug": settings.DEBUG,
-        }
-
-    @app.get("/api/v1/ws/connections", tags=["System"], summary="Active WebSocket connections")
-    async def ws_connections() -> dict[str, Any]:
-        return {
-            "active_connections": ws_manager.active_connections,
-            "connections": ws_manager.get_connection_list(),
-        }
-
-    return app
+if _ASYNC_SETTINGS_AVAILABLE:
+    try:
+        from app.api.routes.auth import router as auth_router
+        from app.api.routes.trades import router as trades_router
+        from app.api.routes.market import router as market_router
+        from app.api.routes.settings import router as settings_router_legacy
+        from app.api.routes.webhook import router as webhook_router
+        app.include_router(auth_router)
+        app.include_router(trades_router)
+        app.include_router(market_router)
+        app.include_router(settings_router_legacy)
+        app.include_router(webhook_router)
+        logger.info("Legacy async routes registered (auth, trades, market, settings, webhook)")
+    except Exception as exc:
+        logger.warning("Legacy async routes unavailable (non-critical): %s", exc)
 
 
-# ── ASGI entrypoint ────────────────────────────────────────────────────────────
+# ── Health / system endpoints ──────────────────────────────────────────────────
 
-app = create_application()
+@app.get("/", tags=["system"])
+def root() -> dict:
+    return {
+        "name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "status": "running",
+        "docs": "/docs",
+    }
 
-if __name__ == "__main__":
-    import uvicorn
 
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.DEBUG,
-        log_level=settings.LOG_LEVEL.lower(),
-        workers=1,
-    )
+@app.get("/health", tags=["system"])
+def health() -> dict:
+    from app.services.mt5_service import MT5Service
+    return {
+        "status": "healthy",
+        "mt5_connected": MT5Service.is_connected(),
+        "version": settings.APP_VERSION,
+    }
+
+
+@app.get("/api/status", tags=["system"])
+def api_status() -> dict:
+    from app.services.mt5_service import MT5Service
+    mt5 = MT5Service.get_status()
+    return {
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "mt5": mt5,
+        "ai_providers": {
+            "openai": bool(settings.OPENAI_API_KEY),
+            "anthropic": bool(settings.ANTHROPIC_API_KEY),
+        },
+    }

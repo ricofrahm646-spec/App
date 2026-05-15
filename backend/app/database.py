@@ -25,6 +25,10 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    """Create all tables."""
-    from app.models import strategy, backtest, trade, telegram_model, tradingview_model, risk_model  # noqa: F401
+    """Create all JARVIS SQLite tables."""
+    from app.models.strategy import Strategy  # noqa: F401
+    from app.models.backtest import BacktestResult  # noqa: F401
+    from app.models.telegram_model import TelegramConfig, TelegramMessage  # noqa: F401
+    from app.models.tradingview_model import TradingViewConfig, TradingViewSignal  # noqa: F401
+    from app.models.risk_model import RiskSettings, RiskEvent  # noqa: F401
     Base.metadata.create_all(bind=engine)
