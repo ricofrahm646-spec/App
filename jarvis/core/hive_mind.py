@@ -16,6 +16,8 @@ except ImportError:
         def subscribe(self, s, t): pass
         def consume(self, s): return []
 
+from jarvis.core.autostart import AutostartManager
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("HIVE_MIND")
 
@@ -26,9 +28,13 @@ class HiveMind:
     """
     def __init__(self):
         self.bus = HiveBus()
+        self.autostart = AutostartManager()
         self.agents = {}
         self.max_agents = 500
         self.is_active = True
+
+        # Ensure system integration on boot
+        self.autostart.enable_autostart()
 
     async def register_agent(self, agent_id: str, topics: List[str]):
         if len(self.agents) >= self.max_agents:
