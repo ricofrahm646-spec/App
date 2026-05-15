@@ -9,9 +9,3 @@ redis
 numpy
 pandas
 backtrader
-vectorbt
-MetaTrader5
-xgboost
-optuna
-torch
-tensorflow

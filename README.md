@@ -51,3 +51,10 @@ This is the first complete architecture pass. The platform contains real
 interfaces, validators, generators and service boundaries, while broker-specific
 actions that require a local MetaTrader terminal are implemented as auditable
 command plans and filesystem operations.
+
+Optional AI/MT5 dependencies are split from the core backend image:
+
+```bash
+pip install -r backend/requirements-ai.txt
+pip install -r backend/requirements-mt5.txt
+```

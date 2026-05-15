@@ -1,0 +1,3 @@
+# Optional local MetaTrader 5 bridge.
+# The official MetaTrader5 package requires a compatible local terminal setup.
+MetaTrader5

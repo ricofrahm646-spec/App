@@ -1,0 +1,8 @@
+# Optional AI/backtesting acceleration stack.
+# Install in environments with sufficient CPU/GPU resources:
+# pip install -r backend/requirements-ai.txt
+vectorbt
+xgboost
+optuna
+torch
+tensorflow
