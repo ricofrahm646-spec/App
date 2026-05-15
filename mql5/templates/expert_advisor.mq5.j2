@@ -1,0 +1,52 @@
+#property strict
+#property version   "1.00"
+#property description "JARVIS generated Expert Advisor for {{ source_strategy_name }}"
+
+input double RiskPerTrade = 0.01;
+input double StopLossPips = 25;
+input double TakeProfitPips = 40;
+
+datetime lastBarTime = 0;
+
+bool HasOpenPosition()
+{
+   return PositionsTotal() > 0;
+}
+
+void CloseOnEmergencyLoss()
+{
+   // Hook for future account and position loss checks.
+}
+
+int OnInit()
+{
+   Print("JARVIS EA initialized for {{ symbol }} on {{ timeframe }}");
+   return(INIT_SUCCEEDED);
+}
+
+void OnTick()
+{
+   datetime currentBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+   if(currentBarTime == lastBarTime)
+      return;
+
+   lastBarTime = currentBarTime;
+   CloseOnEmergencyLoss();
+
+   if(HasOpenPosition())
+      return;
+
+   // Replace this placeholder signal with validated strategy logic.
+   bool shouldBuy = false;
+   bool shouldSell = false;
+
+   if(shouldBuy && !shouldSell)
+   {
+      Print("JARVIS placeholder buy condition triggered for {{ source_strategy_name }}");
+   }
+
+   if(shouldSell && !shouldBuy)
+   {
+      Print("JARVIS placeholder sell condition triggered for {{ source_strategy_name }}");
+   }
+}

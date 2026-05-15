@@ -1,0 +1,15 @@
+global_risk:
+  max_single_trade_risk: 0.01
+  max_account_drawdown: 0.20
+  emergency_close_threshold: 0.20
+
+execution_rules:
+  max_concurrent_trades: 1
+  allow_opposite_direction_exposure: false
+  require_stop_loss: true
+  require_take_profit: true
+
+review_requirements:
+  require_backtest_before_live: true
+  require_walk_forward_validation: true
+  require_monte_carlo_validation: true
