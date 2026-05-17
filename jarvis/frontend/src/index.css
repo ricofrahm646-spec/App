@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --color-jarvis-blue: #00d4ff;
+  --color-jarvis-dark: #0a192f;
+}
+
+body {
+  background-color: #050c18;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.glass {
+  background: rgba(10, 25, 47, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 212, 255, 0.1);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
